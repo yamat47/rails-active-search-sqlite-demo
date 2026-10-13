@@ -1,28 +1,30 @@
-# Loads the Aozora Bunko corpus (db/corpus, see its README) and indexes every paragraph.
+# Loads the Rails Guides corpus (db/corpus, see its README) and indexes every section.
 #
-# Paragraphs go in with insert_all, which runs no callbacks, and are then indexed in batches, the
-# way a backfill of an existing table would be. A work already in the database is left alone, so
-# the seed can be re-run after adding a work to the corpus.
+# Sections go in with insert_all, which runs no callbacks, and are then indexed in batches, the
+# way a backfill of an existing table would be. A guide already in the database is left alone, so
+# the seed can be re-run after the corpus changes for the guides that are new.
 
-new_work_ids = Rails.root.join("db/corpus").glob("*.txt").sort.filter_map do |path|
-  front_matter, body = File.read(path).delete_prefix("---\n").split("\n---\n", 2)
-  attributes = YAML.safe_load(front_matter)
-  next if Work.exists?(card_id: attributes.fetch("card_id"))
+new_guide_ids = Rails.root.join("db/corpus").glob("*.yml").sort.filter_map do |path|
+  data = YAML.safe_load_file(path)
+  next if Guide.exists?(slug: data.fetch("slug"))
 
-  work = Work.create!(attributes.slice("title", "author", "card_id", "card_url", "colophon"))
+  guide = Guide.create!(data.slice("slug", "title", "description", "url", "source"))
   now = Time.current
-  rows = body.lines(chomp: true).reject(&:blank?).each_with_index.map do |text, index|
-    { work_id: work.id, position: index + 1, body: text, created_at: now, updated_at: now }
+  rows = data.fetch("sections").each_with_index.map do |section, index|
+    {
+      guide_id: guide.id, position: index + 1, anchor: section.fetch("anchor"), title: section.fetch("title"),
+      parent_title: section["parent"], body: section.fetch("body"), created_at: now, updated_at: now
+    }
   end
-  Paragraph.insert_all!(rows)
-  puts "#{work.title} (#{work.author}): #{rows.size} paragraphs"
-  work.id
+  Section.insert_all!(rows)
+  puts "#{guide.title}: #{rows.size} sections"
+  guide.id
 end
 
-if new_work_ids.any?
+if new_guide_ids.any?
   ActiveSearch.index_names.each do |name|
     ActiveSearch.index(name).batch(max_size: 500) do |batch|
-      Paragraph.includes(:work).where(work_id: new_work_ids).find_each { |paragraph| batch.add(paragraph) }
+      Section.includes(:guide).where(guide_id: new_guide_ids).find_each { |section| batch.add(section) }
     end
     puts "indexed #{name}"
   end

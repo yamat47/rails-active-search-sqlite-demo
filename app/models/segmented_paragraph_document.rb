@@ -1,2 +1,0 @@
-class SegmentedParagraphDocument < ApplicationRecord
-end

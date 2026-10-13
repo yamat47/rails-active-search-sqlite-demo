@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title><%= content_for(:title) || "Rails Active Search on SQLite FTS5" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="Rails Active Search on SQLite FTS5 with Japanese text: unicode61, trigram and word-segmented indexes side by side, running in the browser on ruby.wasm.">
+    <meta name="description" content="Rails Active Search on SQLite FTS5: the Rails Guides indexed with the unicode61, porter and trigram tokenizers, side by side, running in the browser on ruby.wasm.">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= yield :head %>
@@ -16,8 +16,8 @@
     <header class="site-header">
       <h1><%= link_to "Rails Active Search on SQLite FTS5", root_path %></h1>
       <p class="site-tagline">
-        Japanese full-text search with <a href="https://github.com/basecamp/rails-active_search">Active Search</a>'s SQLite adapter.
-        The same paragraphs, three tokenizers, side by side.
+        The Rails Guides, searched with <a href="https://github.com/basecamp/rails-active_search">Active Search</a>'s SQLite adapter.
+        The same sections, three FTS5 tokenizers, side by side.
         <% if on_wasm? %>This Rails app is running inside your browser on ruby.wasm.<% end %>
       </p>
     </header>
@@ -28,7 +28,8 @@
 
     <footer class="site-footer">
       <p>
-        Texts from <a href="https://www.aozora.gr.jp/">青空文庫 (Aozora Bunko)</a>, public domain in Japan.
+        Text from the <a href="https://guides.rubyonrails.org/">Rails Guides</a>, © the Rails contributors,
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
         Source and notes on <a href="https://github.com/yamat47/rails-active-search-sqlite-demo">GitHub</a>.
       </p>
     </footer>

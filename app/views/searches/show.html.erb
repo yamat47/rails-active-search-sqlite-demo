@@ -1,27 +1,28 @@
 <%= form_with url: root_path, method: :get, class: "search-form", data: { turbo_frame: "_top" } do |form| %>
-  <%= form.search_field :q, value: @query, placeholder: "検索語を入力 (e.g. ごん, 山猫, メロス)", autofocus: true, class: "search-input", lang: "ja" %>
-  <%= form.select :author, options_for_select([ [ "全著者", "" ] ] + @authors.map { |a| [ a, a ] }, @author), {}, class: "search-author" %>
+  <%= form.search_field :q, value: @query, placeholder: "Search the Rails Guides (e.g. callbacks, has_many, deprecat)", autofocus: true, class: "search-input" %>
+  <%= form.select :guide, options_for_select([ [ "All guides", "" ] ] + @guides.map { |g| [ g.title, g.id ] }, @guide&.id), {}, class: "search-guide" %>
   <%= form.submit "Search", class: "search-submit" %>
 <% end %>
 
 <p class="samples">
   Try:
   <% @sample_queries.each do |sample| %>
-    <%= link_to sample, root_path(q: sample, author: @author), class: "sample" %>
+    <%= link_to sample, root_path(q: sample, guide: @guide&.id), class: "sample" %>
   <% end %>
 </p>
 
 <% if @columns.empty? %>
   <section class="intro">
     <p>
-      Each column below is one Active Search index over the same <%= number_with_delimiter Paragraph.count %> paragraphs
-      of <%= Work.count %> short stories. They differ in one line of their migration, the FTS5 tokenizer,
-      and the third one also splits the text into words before indexing it.
+      Each column below is one Active Search index over the same <%= number_with_delimiter Section.count %> sections
+      of <%= Guide.count %> Rails Guides. The indexes differ in one line of their migration, the FTS5 tokenizer.
     </p>
     <p>
-      Search for a two-character word like <%= link_to "ごん", root_path(q: "ごん") %> to see trigram miss it,
-      a word inside a sentence like <%= link_to "ゴーシュ", root_path(q: "ゴーシュ") %> to see unicode61 miss it,
-      or <%= link_to "料理店", root_path(q: "料理店") %> to see the word splitter disagree with you.
+      Search for <%= link_to "callbacks", root_path(q: "callbacks") %> to see the default tokenizer skip the
+      sections that say "callback", for <%= link_to "validate", root_path(q: "validate") %> to see the Porter stemmer
+      fold a word's forms together, for <%= link_to "deprecat", root_path(q: "deprecat") %> to see only trigram match
+      part of a word, or for <%= link_to "has_many", root_path(q: "has_many") %> to see the default tokenizer
+      read it as the two words "has many".
     </p>
   </section>
 <% else %>

@@ -21,13 +21,16 @@
   <% else %>
     <p class="column-count"><%= pluralize number_with_delimiter(column.results.total), "hit" %><%= ", showing the first #{column.results.size}" if column.results.total > column.results.size %></p>
     <ol class="hits">
-      <% column.results.each do |paragraph| %>
+      <% column.results.each do |section| %>
         <li class="hit">
-          <p class="hit-body"><%= column.strategy.display_highlight(paragraph.hit.highlight(:body)) || paragraph.body %></p>
+          <p class="hit-title">
+            <span class="hit-guide"><%= section.guide_title %></span>
+            <%= link_to section.hit.highlight(:title) || section.title, section.url, class: "hit-link" %>
+          </p>
+          <p class="hit-body"><%= section.hit.highlight(:body) || truncate(section.body, length: 200) %></p>
           <p class="hit-meta">
-            <%= link_to paragraph.work.title, work_path(paragraph.work, anchor: "p#{paragraph.position}") %>
-            <span class="hit-author"><%= paragraph.author %></span>
-            <span class="hit-score" title="FTS5 bm25 rank, lower is better">rank <%= number_with_precision paragraph.hit.score, precision: 3 %></span>
+            <% if section.parent_title %><span class="hit-parent">in <%= section.parent_title %></span><% end %>
+            <span class="hit-score" title="FTS5 bm25 rank, lower is better">rank <%= number_with_precision section.hit.score, precision: 3 %></span>
           </p>
         </li>
       <% end %>

@@ -2,8 +2,12 @@ require "test_helper"
 
 class SearchesControllerTest < ActionDispatch::IntegrationTest
   setup do
-    work = Work.create!(title: "試し", author: "名無し", card_id: 1, card_url: "https://www.aozora.gr.jp/")
-    work.paragraphs.create!(position: 1, body: "東京都渋谷区神宮前の店舗で待ち合わせた。")
+    guide = Guide.create!(slug: "active_record_callbacks", title: "Active Record Callbacks",
+      url: "https://guides.rubyonrails.org/v8.1/active_record_callbacks.html",
+      source: "https://github.com/rails/rails/blob/v8.1.4/guides/source/active_record_callbacks.md")
+    guide.sections.create!(position: 1, anchor: "callback-registration", title: "Callback Registration",
+      body: "In order to use the available callbacks, you need to register them.")
+    @other = Guide.create!(slug: "other", title: "Other", url: "https://example.invalid/other.html", source: "https://example.invalid/other.md")
   end
 
   test "the front page without a query explains the three columns" do
@@ -14,21 +18,17 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a query renders one column per strategy with the hits it has" do
-    get root_path(q: "渋谷区")
+    get root_path(q: "callba")
     assert_response :success
     assert_select "#strategy-unicode61 .column-count", text: "0 hits"
-    assert_select "#strategy-trigram .hit-body mark", text: "渋谷区"
-    assert_select "#strategy-segmented .token", text: "渋谷"
+    assert_select "#strategy-porter .column-count", text: "0 hits"
+    assert_select "#strategy-trigram .hit-title mark", text: "Callba"
+    assert_select "#strategy-trigram .hit-link[href=?]", "https://guides.rubyonrails.org/v8.1/active_record_callbacks.html#callback-registration"
+    assert_select "#strategy-trigram .token", text: "cal"
   end
 
-  test "an author filter narrows every column" do
-    get root_path(q: "渋谷区", author: "別人")
-    assert_select "#strategy-trigram .column-count", text: "0 hits"
-  end
-
-  test "a work page shows its paragraphs with anchors" do
-    get work_path(Work.first)
-    assert_response :success
-    assert_select "p#p1", text: /渋谷区/
+  test "a guide filter narrows every column" do
+    get root_path(q: "callbacks", guide: @other.id)
+    assert_select "#strategy-porter .column-count", text: "0 hits"
   end
 end
