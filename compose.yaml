@@ -1,0 +1,32 @@
+# Everything runs in containers; the host needs Docker only. Use the Makefile targets
+# rather than calling these services directly.
+name: rails-active-search-sqlite-demo
+
+services:
+  app:
+    build: .
+    volumes:
+      - ./:/app
+      # ruby.wasm's build/ cache grows to several GB; a named volume keeps it off the
+      # bind mount (slow on macOS) while tmp/, dist/ and storage/ stay visible on the host.
+      - wasm-build:/app/build
+      # npm installs platform-specific binaries (esbuild, rollup); the container's Linux set
+      # must not land in the host checkout and vice versa.
+      - pwa-node-modules:/app/pwa/node_modules
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    # docker-init as PID 1 so Ctrl-C reaches Puma and whatever it spawns.
+    init: true
+    # A server.pid left behind by a hard stop would name the fresh container's own PID,
+    # and Rails would refuse to start.
+    command: ["bash", "-c", "rm -f tmp/pids/server.pid && bin/rails db:prepare && exec bin/rails server -b 0.0.0.0"]
+
+  actionlint:
+    image: rhysd/actionlint:1.7.12
+    volumes:
+      - ./:/repo:ro
+    working_dir: /repo
+
+volumes:
+  wasm-build:
+  pwa-node-modules:

@@ -1,0 +1,109 @@
+name: CI
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: yamat47/github-toolkit/actions/checkout@main
+        with:
+          persist-credentials: false
+      - uses: yamat47/github-toolkit/actions/setup-ruby@main
+        with:
+          bundler-cache: true
+      - name: RuboCop
+        run: bin/rubocop
+      - name: Lint workflows
+        run: docker compose run --rm actionlint -color
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: yamat47/github-toolkit/actions/checkout@main
+        with:
+          persist-credentials: false
+      - uses: yamat47/github-toolkit/actions/setup-ruby@main
+        with:
+          bundler-cache: true
+      - name: Run tests
+        run: bin/rails test
+
+  # Compiles the application to Wasm, builds the database and the static site around it, and
+  # checks the result in a real browser. The first run compiles CRuby, which takes a while;
+  # build/ is cached so later runs only relink.
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: yamat47/github-toolkit/actions/checkout@main
+        with:
+          persist-credentials: false
+      - uses: yamat47/github-toolkit/actions/setup-ruby@main
+        with:
+          bundler-cache: true
+      - uses: yamat47/github-toolkit/actions/setup-node@main
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Cache the ruby.wasm toolchain and build
+        uses: yamat47/github-toolkit/actions/cache@main
+        with:
+          path: build
+          key: ruby-wasm-${{ runner.os }}-${{ hashFiles('.ruby-version', 'Gemfile.lock', 'config/wasmify.yml') }}
+          restore-keys: |
+            ruby-wasm-${{ runner.os }}-
+      - name: Install wasi-vfs
+        run: |
+          curl -fsSL -o /tmp/wasi-vfs.zip https://github.com/kateinoigakukun/wasi-vfs/releases/download/v0.6.3/wasi-vfs-cli-x86_64-unknown-linux-gnu.zip
+          mkdir -p "$HOME/.local/bin"
+          unzip -o /tmp/wasi-vfs.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/wasi-vfs"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Compile the application to Wasm
+        run: bin/rails wasmify:pack
+      - name: Build the demo database
+        run: bin/rails demo:database
+      - name: Install the site's packages
+        run: npm ci
+        working-directory: pwa
+      - name: Build the site
+        run: npm run build
+        working-directory: pwa
+      - uses: yamat47/github-toolkit/actions/setup-playwright-chromium@main
+        with:
+          working-directory: pwa
+          exec: npx
+      - name: Boot the site in a browser and search
+        run: npm run smoke
+        working-directory: pwa
+      - uses: yamat47/github-toolkit/actions/upload-pages-artifact@main
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: pwa/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: [lint, test, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write # deploy-pages creates the Pages deployment
+      id-token: write # deploy-pages proves the deployment comes from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: yamat47/github-toolkit/actions/deploy-pages@main

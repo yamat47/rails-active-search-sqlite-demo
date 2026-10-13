@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: "bundler"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+  # The Vite shell that serves the Wasm build in the browser.
+  - package-ecosystem: "npm"
+    directory: "/pwa"
+    schedule:
+      interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+  # Keeps the Ruby image in Dockerfile and the tool images in compose.yaml current.
+  # Actions come from yamat47/github-toolkit@main, which pins and bumps upstream itself.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"

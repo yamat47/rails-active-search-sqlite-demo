@@ -1,0 +1,14 @@
+name: Update skills
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  update:
+    permissions:
+      contents: write # pushes the update-skills branch
+      pull-requests: write # opens or refreshes the pull request
+    uses: yamat47/github-toolkit/.github/workflows/update-skills.yml@main

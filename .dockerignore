@@ -1,0 +1,12 @@
+# The image copies only Gemfile and Gemfile.lock; the repository is bind-mounted at run time.
+# Keep generated and heavy directories out of the build context anyway.
+.git
+tmp
+log
+storage
+build
+rubies
+dist
+pwa/node_modules
+pwa/dist
+*.wasm
