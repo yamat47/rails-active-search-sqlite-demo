@@ -1,0 +1,269 @@
+---
+slug: plugins
+title: The Basics of Creating Rails Plugins
+description: This guide covers how to build a plugin to extend the functionality of Rails.
+url: https://guides.rubyonrails.org/v8.1/plugins.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/plugins.md
+ref: v8.1.4
+sections:
+- anchor: what-are-plugins-questionmark
+  title: What are Plugins?
+  parent:
+  body: |-
+    A Rails plugin is a packaged extension that adds functionality to a Rails application. Plugins serve several purposes:
+
+    They offer a way for developers to experiment with new ideas without affecting the stability of the core codebase.
+    They support a modular architecture, allowing features to be maintained, updated, or released independently.
+    They give teams an outlet for introducing powerful features without needing to include everything directly into the framework.
+
+    At a technical level, a plugin is a Ruby gem that’s designed to work inside a Rails application. It often uses a Railtie to hook into the Rails boot process, allowing it to extend or modify the framework's behavior in a structured way. A Railtie is the most basic integration point for extending Rails — it’s typically used when your plugin needs to add configuration, rake tasks, or initializer code, but doesn’t expose any controllers, views, or models.
+
+    An Engine is a more advanced type of plugin that behaves like a mini Rails application. It can include its own routes, controllers, views, and even assets. While all engines are plugins, not all plugins are engines. The main difference lies in scope: plugins are typically used for smaller customizations or shared behavior across apps, whereas engines provide more fully-featured components with their own routes, models, and views.
+- anchor: generator-options
+  title: Generator Options
+  parent:
+  body: |-
+    Rails plugins are built as gems. They can be shared across different Rails applications using RubyGems and Bundler if desired.
+
+    The rails plugin new command supports several options that determine what type of plugin structure is generated.
+
+    The Basic Plugin (default), without any arguments, generates a minimal plugin structure suitable for simple extensions like core class methods or utility functions.
+
+    We'll use the basic plugin generator for this guide. There are two options, --full and --mountable, which are covered in the Rails Engines guide.
+
+    The Full Plugin (--full) option creates a more complete plugin structure that includes an app directory tree (models, views, controllers), a config/routes.rb file, and an Engine class at lib/api_boost/engine.rb.
+
+    Use --full when your plugin needs its own models, controllers, or views but doesn't require namespace isolation.
+
+    The Mountable Engine (--mountable) option creates a fully isolated, mountable engine that includes everything from --full plus:
+
+    Namespace isolation (ApiBoost:: prefix for all classes)
+    Isolated routing (ApiBoost::Engine.routes.draw)
+    Asset manifest files
+    Namespaced ApplicationController and ApplicationHelper
+    Automatic mounting in the dummy app for testing
+
+    Use --mountable when building a self-contained feature that could work as a separate application.
+
+    For more information about engines, see the Getting Started with Engines guide.
+
+    Below is some guidance on choosing the right option:
+
+    Basic plugin: Simple utilities, core class extensions, or small helper methods
+    --full plugin: Complex functionality that needs models/controllers but shares the host app's namespace
+    --mountable engine: Self-contained features like admin panels, blogs, or API modules
+
+    See usage and options by asking for help:
+- anchor: setup
+  title: Setup
+  parent:
+  body: |-
+    For the purpose of this guide, imagine you're building APIs and want to create a plugin that adds common API functionality like request throttling, response caching, and automatic API documentation. You'll create a plugin called "ApiBoost" that can enhance any Rails API application.
+- anchor: generate-the-plugin
+  title: Generate the Plugin
+  parent: Setup
+  body: |-
+    Create a basic plugin with the command:
+
+    This will create the ApiBoost plugin in a directory named api_boost. Let's examine what was generated:
+
+    The lib directory contains your plugin's source code:
+
+    lib/api_boost.rb is the main entry point for your plugin
+    lib/api_boost/ contains modules and classes for your plugin functionality
+    lib/tasks/ contains any Rake tasks your plugin provides
+
+    The test/dummy directory contains a complete Rails application that's used for testing your plugin. This dummy application:
+
+    Loads your plugin automatically through the Gemfile
+    Provides a Rails environment to test your plugin's integration
+    Includes generators, models, controllers, and views as needed for testing
+    Can be used interactively with rails console and rails server
+
+    The Gemspec file (api_boost.gemspec) defines your gem's metadata, dependencies, and the files to include when packaging.
+- anchor: set-up-the-plugin
+  title: Set Up the Plugin
+  parent: Setup
+  body: |-
+    Navigate to the directory that contains the plugin, and edit api_boost.gemspec to replace any lines that have TODO values:
+
+    Then run the bundle install command.
+
+    After that, set up your testing database by navigating to the test/dummy directory and running the following command:
+
+    The dummy application works just like any Rails application - you can generate models, run migrations, start the server, or open a console to test the plugin's functionality as you develop it.
+
+    Once the database is created, return to the plugin's root directory (cd ../..).
+
+    Now you can run the tests using the bin/test command, and you should see:
+
+    This will tell you that everything got generated properly, and you are ready to start adding functionality.
+- anchor: extending-core-classes
+  title: Extending Core Classes
+  parent:
+  body: |-
+    This section will explain how to add a method to Integer that will be available anywhere in your Rails application.
+
+    Before proceeding, it's important to understand that extending core classes (like String, Array, Hash, etc.) should be used sparingly, if at all. Core class extensions can be brittle, dangerous, and are often unnecessary. They can:
+    Cause naming conflicts when multiple gems extend the same class with the same method name
+    Break unexpectedly when Ruby or Rails updates change core class behavior
+    Make debugging difficult because it's not obvious where methods come from
+    Create coupling issues between your plugin and other code Better alternatives to consider:
+    Create utility modules or helper classes instead
+    Use composition over monkey patching
+    Implement functionality as instance methods on your own classes For more details on why core class extensions can be problematic, see The Case Against Monkey Patching. That said, understanding how core class extensions work is valuable. The example below demonstrates the technique, but they should be used sparingly.
+
+    In this example you will add a method to Integer named requests_per_hour.
+
+    In lib/api_boost.rb, add require "api_boost/core_ext":
+
+    Create the core_ext.rb file and add a method to Integer to define a RateLimit that could define 10.requests_per_hour, similar to 10.hours that returns a Time.
+
+    To see this in action, change to the test/dummy directory, start bin/rails console, and test the API response formatting:
+
+    The dummy application automatically loads your plugin, so any extensions you add are immediately available for testing.
+- anchor: add-an-acts-as-method-to-active-record
+  title: Add an "acts_as" Method to Active Record
+  parent:
+  body: |-
+    A common pattern in plugins is to add a method called acts_as_something to models. In this case, you want to write a method called acts_as_api_resource that adds API-specific functionality to your Active Record models.
+
+    Let’s say you’re building an API, and you want to keep track of the last time a resource (like a Product) was accessed via that API. You might want to use that timestamp to:
+
+    throttle requests
+    show “last active” times in your admin panel
+    prioritize stale records for syncing
+
+    Instead of writing this logic in every model, you can use a shared plugin. The acts_as_api_resource method adds this functionality to any model, letting you track API activity by updating a timestamp field.
+
+    To begin, set up your files so that you have:
+
+    The code above uses ActiveSupport::Concern to simplify including modules with both class and instance methods. Methods in the class_methods block become class methods when the module is included. For more details, see the ActiveSupport::Concern API documentation.
+- anchor: add-a-class-method
+  title: Add a Class Method
+  parent: Add an "acts_as" Method to Active Record
+  body: |-
+    By default, this plugin expects your model to have a column named last_requested_at. However, since that column name might already be used for something else, the plugin lets you customize it. You can override the default by passing a different column name with the api_timestamp_field: option. Internally, this value is stored in a class-level setting called api_timestamp_field, which the plugin uses when updating the timestamp.
+
+    For example, if you want to use last_api_call instead of last_requested_at as the column name, you can do the following:
+
+    First, generate some models in your "dummy" Rails application to test this functionality. Run the following commands from the test/dummy directory:
+
+    Now update the Product model so that it acts like an API resource:
+
+    To make the plugin available to all models, include the module in ApplicationRecord (we'll look at doing this automatically later):
+
+    Now you can test this functionality in the Rails console:
+- anchor: add-an-instance-method
+  title: Add an Instance Method
+  parent: Add an "acts_as" Method to Active Record
+  body: |-
+    This plugin adds an instance method called track_api_request to any Active Record model that calls acts_as_api_resource. This method sets the value of the configured timestamp field to the current time (or a custom time if provided), allowing you to track when an API request was made.
+
+    To add this behavior, update acts_as_api_resource.rb:
+
+    The use of write_attribute above to write to the field in model is just one example of how a plugin can interact with the model, and will not always be the right method to use. For example, you might prefer using send, which calls the setter method
+
+    Now you can test the functionality in the Rails console:
+- anchor: advanced-integration-using-railties
+  title: 'Advanced Integration: Using Railties'
+  parent:
+  body: |-
+    The plugin we've built so far works great for basic functionality. However, if the plugin needs to integrate more deeply with Rails' framework, you'll want to use a Railtie.
+
+    A Railtie is required when your plugin needs to:
+
+    Add configuration options accessible via Rails.application.config
+    Automatically include modules in Rails classes without manual setup
+    Provide Rake tasks to the host application
+    Set up initializers that run during Rails boot
+    Add middleware to the application stack
+    Configure Rails generators
+    Subscribe to ActiveSupport::Notifications
+
+    For simple plugins like ours that only extend core classes or add modules, a Railtie isn't necessary.
+- anchor: configuration-options
+  title: Configuration Options
+  parent: 'Advanced Integration: Using Railties'
+  body: |-
+    Let's say you want to make the default rate limit in your to_throttled_response method configurable. First, create a Railtie:
+
+    Add a configuration module to your plugin:
+
+    Update your core extension to use the configuration:
+
+    Require the new files in your main plugin file:
+
+    Now applications using your plugin can configure it:
+- anchor: automatic-module-inclusion
+  title: Automatic Module Inclusion
+  parent: 'Advanced Integration: Using Railties'
+  body: |-
+    Instead of requiring users to manually include ActsAsApiResource in their ApplicationRecord, you can use a Railtie to do it automatically:
+
+    The ActiveSupport.on_load hook ensures your module is included at the right time during Rails initialization, after ActiveRecord is fully loaded.
+- anchor: rake-tasks
+  title: Rake Tasks
+  parent: 'Advanced Integration: Using Railties'
+  body: |-
+    To provide Rake tasks to applications using your plugin:
+
+    Create the Rake task file:
+
+    Applications using your plugin will now have access to rails api_boost:stats.
+- anchor: testing-the-railtie
+  title: Testing the Railtie
+  parent: 'Advanced Integration: Using Railties'
+  body: |-
+    You can test that your Railtie works correctly in the dummy application:
+
+    Railties provide a clean way to integrate your plugin with Rails' initialization process. For more details about the complete Rails initialization lifecycle, see the Rails Initialization Process Guide.
+- anchor: testing-your-plugin
+  title: Testing Your Plugin
+  parent:
+  body: |-
+    It's good practice to add tests. The Rails plugin generator created a test framework for you. Let's add tests for the functionality we just built.
+- anchor: testing-core-extensions
+  title: Testing Core Extensions
+  parent: Testing Your Plugin
+  body: |-
+    Create a test file for your core extensions:
+- anchor: testing-acts-as-methods
+  title: Testing Acts As Methods
+  parent: Testing Your Plugin
+  body: |-
+    Create a test file for your ActsAs functionality:
+
+    Run your tests to make sure everything is working:
+- anchor: generators
+  title: Generators
+  parent:
+  body: |-
+    Generators can be included in your gem simply by creating them in a lib/generators directory of your plugin. More information about the creation of generators can be found in the Generators Guide.
+- anchor: publishing-your-gem
+  title: Publishing Your Gem
+  parent:
+  body: |-
+    Gem plugins currently in development can easily be shared from any Git repository. To share the ApiBoost gem with others, simply commit the code to a Git repository (like GitHub) and add a line to the Gemfile of the application in question:
+
+    After running bundle install, your gem functionality will be available to the application.
+
+    When the gem is ready to be shared as a formal release, it can be published to RubyGems.
+
+    Alternatively, you can benefit from Bundler's Rake tasks. You can see a full list with the following:
+
+    For more information about publishing gems to RubyGems, see: Publishing your gem.
+- anchor: rdoc-documentation
+  title: RDoc Documentation
+  parent:
+  body: |-
+    Once your plugin is stable, you can write documentation for it. The first step is to update the README.md file with detailed information about how to use your plugin. A few key things to include are:
+
+    Your name
+    How to install
+    How to add the functionality to the app (several examples of common use cases)
+    Warnings, gotchas or tips that might help users and save them time
+
+    Once your README.md is solid, go through and add RDoc comments to all the methods that developers will use. It's also customary to add # :nodoc: comments to those parts of the code that are not included in the public API.
+
+    Once your comments are good to go, navigate to your plugin directory and run:

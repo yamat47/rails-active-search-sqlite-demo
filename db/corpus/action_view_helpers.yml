@@ -1,0 +1,418 @@
+---
+slug: action_view_helpers
+title: Action View Helpers
+description: Action View has helpers for handling everything from formatting dates and linking to images, to sanitizing and localizing content. This guide introduces a few of the more common Action View helpers.
+url: https://guides.rubyonrails.org/v8.1/action_view_helpers.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/action_view_helpers.md
+ref: v8.1.4
+sections:
+- anchor: dates
+  title: Dates
+  parent: Formatting
+  body: |-
+    These helpers facilitate the display of date and/or time elements as contextual human readable forms.
+
+    distance_of_time_in_words
+
+    Reports the approximate distance in time between two Time or Date objects or integers as seconds. Set include_seconds to true if you want more detailed approximations.
+
+    We use Time.current instead of Time.now because it returns the current time based on the timezone set in Rails, whereas Time.now returns a Time object based on the server's timezone.
+
+    See the distance_of_time_in_words API Documentation for more information.
+
+    time_ago_in_words
+
+    Reports the approximate distance in time between a Time or Date object, or integer as seconds, and Time.current.
+
+    See the time_ago_in_words API Documentation for more information.
+- anchor: numbers
+  title: Numbers
+  parent: Formatting
+  body: |-
+    A set of methods for converting numbers into formatted strings. Methods are provided for phone numbers, currency, percentage, precision, positional notation, and file size.
+
+    number_to_currency
+
+    Formats a number into a currency string (e.g., $13.65).
+
+    See the number_to_currency API Documentation for more information.
+
+    number_to_human
+
+    Pretty prints (formats and approximates) a number so it is more readable by users; useful for numbers that can get very large.
+
+    See the number_to_human API Documentation for more information.
+
+    number_to_human_size
+
+    Formats the bytes in size into a more understandable representation; useful for reporting file sizes to users.
+
+    See the number_to_human_size API Documentation for more information.
+
+    number_to_percentage
+
+    Formats a number as a percentage string.
+
+    See the number_to_percentage API Documentation for more information.
+
+    number_to_phone
+
+    Formats a number into a phone number (US by default).
+
+    See the number_to_phone API Documentation for more information.
+
+    number_with_delimiter
+
+    Formats a number with grouped thousands using a delimiter.
+
+    See the number_with_delimiter API Documentation for more information.
+
+    number_with_precision
+
+    Formats a number with the specified level of precision, which defaults to 3.
+
+    See the number_with_precision API Documentation for more information.
+- anchor: text
+  title: Text
+  parent: Formatting
+  body: |-
+    A set of methods for filtering, formatting and transforming strings.
+
+    excerpt
+
+    Given a text and a phrase, excerpt searches for and extracts the first occurrence of the phrase, plus the requested surrounding text determined by a radius. An omission marker is prepended/appended if the start/end of the result does not coincide with the start/end of the text.
+
+    See the excerpt API Documentation for more information.
+
+    pluralize
+
+    Returns the singular or plural form of a word based on the value of a number.
+
+    See the pluralize API Documentation for more information.
+
+    truncate
+
+    Truncates a given text to a given length. If the text is truncated, an omission marker will be appended to the result for a total length not exceeding length.
+
+    See the truncate API Documentation for more information.
+
+    word_wrap
+
+    Wraps the text into lines no longer than line_width width.
+
+    See the word_wrap API Documentation for more information.
+- anchor: forms
+  title: Forms
+  parent:
+  body: |-
+    Form helpers simplify working with models compared to using standard HTML elements alone. They offer a range of methods tailored to generating forms based on your models. Some methods correspond to a specific type of input, such as text fields, password fields, select dropdowns, and more. When a form is submitted, the inputs within the form are grouped into the params object and sent back to the controller.
+
+    You can learn more about form helpers in the Action View Form Helpers Guide.
+- anchor: navigation
+  title: Navigation
+  parent:
+  body: |-
+    A set of methods to build links and URLs that depend on the routing subsystem.
+- anchor: button-to
+  title: button_to
+  parent: Navigation
+  body: |-
+    Generates a form that submits to the passed URL. The form has a submit button with the value of the name.
+
+    would output the following HTML:
+
+    See the button_to API Documentation for more information.
+- anchor: current-page-questionmark
+  title: current_page?
+  parent: Navigation
+  body: |-
+    Returns true if the current request URL matches the given options.
+
+    See the current_page? API Documentation for more information.
+- anchor: link-to
+  title: link_to
+  parent: Navigation
+  body: |-
+    Links to a URL derived from url_for under the hood. It's commonly used to create links for RESTful resources, especially when passing models as arguments to link_to.
+
+    You can use a block if your link target can't fit in the name parameter.
+
+    It would output the following HTML:
+
+    See the link_to API Documentation for more information.
+- anchor: mail-to
+  title: mail_to
+  parent: Navigation
+  body: |-
+    Generates a mailto link tag to the specified email address. You can also specify the link text, additional HTML options, and whether to encode the email address.
+
+    See the mail_to API Documentation for more information.
+- anchor: url-for
+  title: url_for
+  parent: Navigation
+  body: |-
+    Returns the URL for the set of options provided.
+- anchor: sanitization
+  title: Sanitization
+  parent:
+  body: |-
+    A set of methods for scrubbing text of undesired HTML elements. The helpers are particularly useful for helping to ensure that only safe and valid HTML/CSS is rendered. It can also be useful to prevent XSS attacks by escaping or removing potentially malicious content from user input before rendering it in your views.
+
+    This functionality is powered internally by the rails-html-sanitizer gem.
+- anchor: sanitize
+  title: sanitize
+  parent: Sanitization
+  body: |-
+    The sanitize method will HTML encode all tags and strip all attributes that aren't specifically allowed.
+
+    If either the :attributes or :tags options are passed, only the mentioned attributes and tags are allowed and nothing else.
+
+    To change defaults for multiple uses, for example, adding table tags to the default:
+
+    See the sanitize API Documentation for more information.
+- anchor: sanitize-css
+  title: sanitize_css
+  parent: Sanitization
+  body: |-
+    Sanitizes a block of CSS code, particularly when it comes across a style attribute in HTML content. sanitize_css is particularly useful when dealing with user-generated content or dynamic content that includes style attributes.
+
+    The sanitize_css method below will remove the styles that are not allowed.
+
+    See the sanitize_css API Documentation for more information.
+- anchor: strip-links
+  title: strip_links
+  parent: Sanitization
+  body: |-
+    Strips all link tags from text leaving just the link text.
+
+    See the strip_links API Documentation for more information.
+- anchor: strip-tags
+  title: strip_tags
+  parent: Sanitization
+  body: |-
+    Strips all HTML tags from the HTML, including comments and special characters.
+
+    See the strip_tags API Documentation for more information.
+- anchor: assets
+  title: Assets
+  parent:
+  body: |-
+    A set of methods for generating HTML that links views to assets such as images, JavaScript files, stylesheets, and feeds.
+
+    By default, Rails links to these assets on the current host in the public folder, but you can direct Rails to link to assets from a dedicated assets server by setting config.asset_host in the application configuration, typically in config/environments/production.rb.
+
+    For example, let's say your asset host is assets.example.com:
+
+    then the corresponding URL for an image_tag would be:
+- anchor: audio-tag
+  title: audio_tag
+  parent: Assets
+  body: |-
+    Generates an HTML audio tag with source(s), either as a single tag for a string source or nested source tags within an array for multiple sources. The sources can be full paths, files in your public audios directory, or Active Storage attachments.
+
+    Internally, audio_tag uses audio_path from the AssetUrlHelpers to build the audio path.
+
+    See the audio_tag API Documentation for more information.
+- anchor: auto-discovery-link-tag
+  title: auto_discovery_link_tag
+  parent: Assets
+  body: |-
+    Returns a link tag that browsers and feed readers can use to auto-detect an RSS, Atom, or JSON feed.
+
+    See the auto_discovery_link_tag API Documentation for more information.
+- anchor: favicon-link-tag
+  title: favicon_link_tag
+  parent: Assets
+  body: |-
+    Returns a link tag for a favicon managed by the asset pipeline. The source can be a full path or a file that exists in your assets directory.
+
+    See the favicon_link_tag API Documentation for more information.
+- anchor: image-tag
+  title: image_tag
+  parent: Assets
+  body: |-
+    Returns an HTML image tag for the source. The source can be a full path or a file that exists in your app/assets/images directory.
+
+    Internally, image_tag uses image_path from the AssetUrlHelpers to build the image path.
+
+    See the image_tag API Documentation for more information.
+- anchor: javascript-include-tag
+  title: javascript_include_tag
+  parent: Assets
+  body: |-
+    Returns an HTML script tag for each of the sources provided. You can pass in the filename (.js extension is optional) of JavaScript files that exist in your app/assets/javascripts directory for inclusion into the current page, or you can pass the full path relative to your document root.
+
+    Some of the most common attributes are async and defer, where async will allow the script to be loaded in parallel to be parsed and evaluated as soon as possible, and defer will indicate that the script is meant to be executed after the document has been parsed.
+
+    Internally, javascript_include_tag uses javascript_path from the AssetUrlHelpers to build the script path.
+
+    See the javascript_include_tag API Documentation for more information.
+- anchor: picture-tag
+  title: picture_tag
+  parent: Assets
+  body: |-
+    Returns an HTML picture tag for the source. It supports passing a String, an Array, or a Block.
+
+    This generates the following HTML:
+
+    See the picture_tag API Documentation for more information.
+- anchor: preload-link-tag
+  title: preload_link_tag
+  parent: Assets
+  body: |-
+    Returns a link tag that browsers can use to preload the source. The source can be the path of a resource managed by the asset pipeline, a full path, or a URI.
+
+    See the preload_link_tag API Documentation for more information.
+- anchor: stylesheet-link-tag
+  title: stylesheet_link_tag
+  parent: Assets
+  body: |-
+    Returns a stylesheet link tag for the sources specified as arguments. If you don't specify an extension, .css will be appended automatically.
+
+    media is used to specify the media type for the link. The most common media types are all, screen, print, and speech.
+
+    Internally, stylesheet_link_tag uses stylesheet_path from the AssetUrlHelpers to build the stylesheet path.
+
+    See the stylesheet_link_tag API Documentation for more information.
+- anchor: video-tag
+  title: video_tag
+  parent: Assets
+  body: |-
+    Generate an HTML video tag with source(s), either as a single tag for a string source or nested source tags within an array for multiple sources. The sources can be full paths, files in your public videos directory, or Active Storage attachments.
+
+    Internally, video_tag uses video_path from the AssetUrlHelpers to build the video path.
+
+    See the video_tag API Documentation for more information.
+- anchor: javascript
+  title: JavaScript
+  parent:
+  body: |-
+    A set of methods for working with JavaScript in your views.
+- anchor: escape-javascript
+  title: escape_javascript
+  parent: JavaScript
+  body: |-
+    Escapes carriage returns and single and double quotes for JavaScript segments. You would use this method to take a string of text and make sure that it doesn’t contain any invalid characters when the browser tries to parse it.
+
+    For example, if you have a partial with a greeting that contains double quotes, you can escape the greeting to use in a JavaScript alert.
+
+    This will escape the quotes correctly and display the greeting in an alert box.
+
+    See the escape_javascript API Documentation for more information.
+- anchor: javascript-tag
+  title: javascript_tag
+  parent: JavaScript
+  body: |-
+    Returns a JavaScript tag wrapping the provided code. You can pass a hash of options to control the behavior of the <script> tag.
+
+    Instead of passing the content as an argument, you can also use a block.
+
+    See the javascript_tag API Documentation for more information.
+- anchor: alternative-tags
+  title: Alternative Tags
+  parent:
+  body: |-
+    A set of methods to generate HTML tags programmatically.
+- anchor: tag
+  title: tag
+  parent: Alternative Tags
+  body: |-
+    Generates a standalone HTML tag with the given name and options.
+
+    Every tag can be built with:
+
+    where tag name can be e.g. br, div, section, article, or any tag really.
+
+    For example, here are some common uses:
+
+    Additionally, you can pass options to add attributes to the generated tag.
+
+    In addition, HTML data-* attributes can be passed to the tag helper using the data option, with a hash containing key-value pairs of sub-attributes. The sub-attributes are then converted to data-* attributes that are dasherized in order to work well with JavaScript.
+
+    See the tag API Documentation for more information.
+- anchor: token-list
+  title: token_list
+  parent: Alternative Tags
+  body: |-
+    Returns a string of tokens built from the arguments provided. This method is also aliased as class_names.
+- anchor: capture-blocks
+  title: Capture Blocks
+  parent:
+  body: |-
+    A set of methods to let you extract generated markup which can be used in other parts of a template or layout file.
+
+    It provides a method to capture blocks into variables through capture, and a way to capture a block of markup for use in a layout through content_for.
+- anchor: capture
+  title: capture
+  parent: Capture Blocks
+  body: |-
+    The capture method allows you to extract part of a template into a variable.
+
+    You can then use this variable anywhere in your templates, layouts, or helpers.
+
+    The return of capture is the string generated by the block.
+
+    See the capture API Documentation for more information.
+- anchor: content-for
+  title: content_for
+  parent: Capture Blocks
+  body: |-
+    Calling content_for stores a block of markup in an identifier for later use. You can make subsequent calls to the stored content in other templates, helper modules or the layout by passing the identifier as an argument to yield.
+
+    A common use case is to set the title of a page in a content_for block.
+
+    You define a content_for block in the special page's view, and then you yield it within the layout. For other pages, where the content_for block isn't utilized, it remains empty, resulting in nothing being yielded.
+
+    You'll notice that in the above example, we use the content_for? predicate method to conditionally render a title. This method checks whether any content has been captured yet using content_for, enabling you to adjust parts of your layout based on the content within your views.
+
+    Additionally, you can employ content_for within a helper module.
+
+    Now, you can call html_title in your layout to retrieve the content stored in the content_for block. If a content_for block is set on the page being rendered, such as in the case of the special_page, it will display the title. Otherwise, it will display the default text "Default Title".
+
+    content_for is ignored in caches. So you shouldn’t use it for elements that will be fragment cached.
+
+    You may be thinking what's the difference between capture and content_for? capture is used to capture a block of markup in a variable, while content_for is used to store a block of markup in an identifier for later use. Internally content_for actually calls capture. However, the key difference lies in their behavior when invoked multiple times. content_for can be called repeatedly, concatenating the blocks it receives for a specific identifier in the order they are provided. Each subsequent call simply adds to what's already stored. In contrast, capture only returns the content of the block, without keeping track of any previous invocations.
+
+    See the content_for API Documentation for more information.
+- anchor: benchmark
+  title: benchmark
+  parent: Performance
+  body: |-
+    Wrap a benchmark block around expensive operations or possible bottlenecks to get a time reading for the operation.
+
+    This would add something like Process data files (0.34523) to the log, which you can then use to compare timings when optimizing your code.
+
+    This helper is a part of Active Support, and it is also available on controllers, helpers, models, etc.
+
+    See the benchmark API Documentation for more information.
+- anchor: cache
+  title: cache
+  parent: Performance
+  body: |-
+    You can cache fragments of a view rather than an entire action or page. This technique is useful for caching pieces like menus, lists of news topics, static HTML fragments, and so on. It allows a fragment of view logic to be wrapped in a cache block and served out of the cache store when the next request comes in.
+
+    The cache method takes a block that contains the content you wish to cache.
+
+    For example, you could cache the footer of your application layout by wrapping it in a cache block.
+
+    You could also cache based on model instances, for example, you can cache each article on a page by passing the article object to the cache method. This would cache each article separately.
+
+    When your application receives its first request to this page, Rails will write a new cache entry with a unique key. A key looks something like this:
+
+    See Fragment Caching and the cache API Documentation for more information.
+- anchor: atom-feed
+  title: atom_feed
+  parent: Miscellaneous
+  body: |-
+    Atom Feeds are XML-based file formats used to syndicate content and can be used by users in feed readers to browse content or by search engines to help discover additional information about your site.
+
+    This helper makes building an Atom feed easy, and is mostly used in Builder templates for creating XML. Here's a full usage example:
+
+    See the atom_feed API Documentation for more information.
+- anchor: debug
+  title: debug
+  parent: Miscellaneous
+  body: |-
+    Returns a YAML representation of an object wrapped with a pre tag. This creates a very readable way to inspect an object.
+
+    See the debug API Documentation for more information.

@@ -1,0 +1,68 @@
+---
+slug: install_ruby_on_rails
+title: Install Ruby on Rails Guide
+description: Learn how to install the Ruby programming language and Ruby on Rails.
+url: https://guides.rubyonrails.org/v8.1/install_ruby_on_rails.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/install_ruby_on_rails.md
+ref: v8.1.4
+sections:
+- anchor: choose-your-operating-system
+  title: Choose Your Operating System
+  parent:
+  body: |-
+    Follow the section for the operating system you use:
+
+    macOS
+    Ubuntu
+    Windows
+
+    Any commands prefaced with a dollar sign $ should be run in the terminal.
+- anchor: install-ruby-on-macos
+  title: Install Ruby on macOS
+  parent: Choose Your Operating System
+  body: |-
+    You'll need macOS Catalina 10.15 or newer to follow these instructions.
+
+    For macOS, you'll need Xcode Command Line Tools and Homebrew to install dependencies needed to compile Ruby.
+
+    Open Terminal and run the following commands:
+- anchor: install-ruby-on-ubuntu
+  title: Install Ruby on Ubuntu
+  parent: Choose Your Operating System
+  body: |-
+    You'll need Ubuntu Jammy 22.04 or newer to follow these instructions.
+
+    Open Terminal and run the following commands:
+- anchor: install-ruby-on-windows
+  title: Install Ruby on Windows
+  parent: Choose Your Operating System
+  body: |-
+    The Windows Subsystem for Linux (WSL) will provide the best experience for Ruby on Rails development on Windows. It runs Ubuntu inside of Windows which allows you to work in an environment that is close to what your servers will run in production.
+
+    You will need Windows 11 or Windows 10 version 2004 and higher (Build 19041 and higher).
+
+    Open PowerShell or Windows Command Prompt and run:
+
+    You may need to reboot during the installation process.
+
+    Once installed, you can open Ubuntu from the Start menu. Enter a username and password for your Ubuntu user when prompted.
+
+    Then run the following commands:
+- anchor: verifying-your-ruby-install
+  title: Verifying Your Ruby Install
+  parent:
+  body: |-
+    Once Ruby is installed, you can verify it works by running:
+- anchor: installing-rails
+  title: Installing Rails
+  parent:
+  body: |-
+    A "gem" in Ruby is a self-contained package of a library or Ruby program. We can use Ruby's gem command to install the latest version of Rails and its dependencies from RubyGems.org.
+
+    Run the following command to install the latest Rails and make it available in your terminal:
+
+    To verify that Rails is installed correctly, run the following and you should see a version number printed out:
+
+    If the rails command is not found, try restarting your terminal.
+
+    You're ready to Get Started with Rails!

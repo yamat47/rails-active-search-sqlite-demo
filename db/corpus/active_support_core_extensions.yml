@@ -1,0 +1,1711 @@
+---
+slug: active_support_core_extensions
+title: Active Support Core Extensions
+description: Active Support provides Ruby language extensions and utilities. It enriches the Ruby language for the development of Rails applications, and for the development of Ruby on Rails itself.
+url: https://guides.rubyonrails.org/v8.1/active_support_core_extensions.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/active_support_core_extensions.md
+ref: v8.1.4
+sections:
+- anchor: stand-alone-active-support
+  title: Stand-Alone Active Support
+  parent: How to Load Core Extensions
+  body: |-
+    In order to have the smallest default footprint possible, Active Support loads the minimum dependencies by default. It is broken in small pieces so that only the desired extensions can be loaded. It also has some convenience entry points to load related extensions in one shot, even everything.
+
+    Thus, after a simple require like:
+
+    only the extensions required by the Active Support framework are loaded.
+
+    Cherry-picking a Definition
+
+    This example shows how to load Hash#with_indifferent_access. This extension enables the conversion of a Hash into an ActiveSupport::HashWithIndifferentAccess which permits access to the keys as either strings or symbols.
+
+    For every single method defined as a core extension this guide has a note that says where such a method is defined. In the case of with_indifferent_access the note reads:
+
+    Defined in active_support/core_ext/hash/indifferent_access.rb.
+
+    That means that you can require it like this:
+
+    Active Support has been carefully revised so that cherry-picking a file loads only strictly needed dependencies, if any.
+
+    Loading Grouped Core Extensions
+
+    The next level is to simply load all extensions to Hash. As a rule of thumb, extensions to SomeClass are available in one shot by loading active_support/core_ext/some_class.
+
+    Thus, to load all extensions to Hash (including with_indifferent_access):
+
+    Loading All Core Extensions
+
+    You may prefer just to load all core extensions, there is a file for that:
+
+    Loading All Active Support
+
+    And finally, if you want to have all Active Support available just issue:
+
+    That does not even put the entire Active Support in memory upfront indeed, some stuff is configured via autoload, so it is only loaded if used.
+- anchor: active-support-within-a-ruby-on-rails-application
+  title: Active Support Within a Ruby on Rails Application
+  parent: How to Load Core Extensions
+  body: |-
+    A Ruby on Rails application loads all Active Support unless config.active_support.bare is true. In that case, the application will only load what the framework itself cherry-picks for its own needs, and can still cherry-pick itself at any granularity level, as explained in the previous section.
+- anchor: blank-questionmark-and-present-questionmark
+  title: blank? and present?
+  parent: Extensions to All Objects
+  body: |-
+    The following values are considered to be blank in a Rails application:
+
+    nil and false,
+
+    strings composed only of whitespace (see note below),
+
+    empty arrays and hashes, and
+
+    any other object that responds to empty? and is empty.
+
+    The predicate for strings uses the Unicode-aware character class [:space:], so for example U+2029 (paragraph separator) is considered to be whitespace.
+
+    Note that numbers are not mentioned. In particular, 0 and 0.0 are not blank.
+
+    For example, this method from ActionController::HttpAuthentication::Token::ControllerMethods uses blank? for checking whether a token is present:
+
+    The method present? is equivalent to !blank?. This example is taken from ActionDispatch::Http::Cache::Response:
+
+    Defined in active_support/core_ext/object/blank.rb.
+- anchor: presence
+  title: presence
+  parent: Extensions to All Objects
+  body: |-
+    The presence method returns its receiver if present?, and nil otherwise. It is useful for idioms like this:
+
+    Defined in active_support/core_ext/object/blank.rb.
+- anchor: duplicable-questionmark
+  title: duplicable?
+  parent: Extensions to All Objects
+  body: |-
+    As of Ruby 2.5, most objects can be duplicated via dup or clone:
+
+    Active Support provides duplicable? to query an object about this:
+
+    Any class can disallow duplication by removing dup and clone or raising exceptions from them. Thus only rescue can tell whether a given arbitrary object is duplicable. duplicable? depends on the hard-coded list above, but it is much faster than rescue. Use it only if you know the hard-coded list is enough in your use case.
+
+    Defined in active_support/core_ext/object/duplicable.rb.
+- anchor: deep-dup
+  title: deep_dup
+  parent: Extensions to All Objects
+  body: |-
+    The deep_dup method returns a deep copy of a given object. Normally, when you dup an object that contains other objects, Ruby does not dup them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
+
+    As you can see, after duplicating the Array instance, we got another object, therefore we can modify it and the original object will stay unchanged. This is not true for array's elements, however. Since dup does not make a deep copy, the string inside the array is still the same object.
+
+    If you need a deep copy of an object, you should use deep_dup. Here is an example:
+
+    If the object is not duplicable, deep_dup will just return it:
+
+    Defined in active_support/core_ext/object/deep_dup.rb.
+- anchor: try
+  title: try
+  parent: Extensions to All Objects
+  body: |-
+    When you want to call a method on an object only if it is not nil, the simplest way to achieve it is with conditional statements, adding unnecessary clutter. The alternative is to use try. try is like Object#public_send except that it returns nil if sent to nil.
+
+    Here is an example:
+
+    Another example is this code from ActiveRecord::ConnectionAdapters::AbstractAdapter where @logger could be nil. You can see that the code uses try and avoids an unnecessary check.
+
+    try can also be called without arguments but a block, which will only be executed if the object is not nil:
+
+    Note that try will swallow no-method errors, returning nil instead. If you want to protect against typos, use try! instead:
+
+    Defined in active_support/core_ext/object/try.rb.
+- anchor: class-eval-args-block
+  title: class_eval(*args, &block)
+  parent: Extensions to All Objects
+  body: |-
+    You can evaluate code in the context of any object's singleton class using class_eval:
+
+    Defined in active_support/core_ext/kernel/singleton_class.rb.
+- anchor: acts-like-questionmark-duck
+  title: acts_like?(duck)
+  parent: Extensions to All Objects
+  body: |-
+    The method acts_like? provides a way to check whether some class acts like some other class based on a simple convention: a class that provides the same interface as String defines
+
+    which is only a marker, its body or return value are irrelevant. Then, client code can query for duck-type-safeness this way:
+
+    Rails has classes that act like Date or Time and follow this contract.
+
+    Defined in active_support/core_ext/object/acts_like.rb.
+- anchor: to-param
+  title: to_param
+  parent: Extensions to All Objects
+  body: |-
+    All objects in Rails respond to the method to_param, which is meant to return something that represents them as values in a query string, or as URL fragments.
+
+    By default to_param just calls to_s:
+
+    The return value of to_param should not be escaped:
+
+    Several classes in Rails overwrite this method.
+
+    For example nil, true, and false return themselves. Array#to_param calls to_param on the elements and joins the result with "/":
+
+    Notably, the Rails routing system calls to_param on models to get a value for the :id placeholder. ActiveRecord::Base#to_param returns the id of a model, but you can redefine that method in your models. For example, given
+
+    we get:
+
+    Controllers need to be aware of any redefinition of to_param because when a request like that comes in "357-john-smith" is the value of params[:id].
+
+    Defined in active_support/core_ext/object/to_param.rb.
+- anchor: to-query
+  title: to_query
+  parent: Extensions to All Objects
+  body: |-
+    The to_query method constructs a query string that associates a given key with the return value of to_param. For example, with the following to_param definition:
+
+    we get:
+
+    This method escapes whatever is needed, both for the key and the value:
+
+    so its output is ready to be used in a query string.
+
+    Arrays return the result of applying to_query to each element with key[] as key, and join the result with "&":
+
+    Hashes also respond to to_query but with a different signature. If no argument is passed a call generates a sorted series of key/value assignments calling to_query(key) on its values. Then it joins the result with "&":
+
+    The method Hash#to_query accepts an optional namespace for the keys:
+
+    Defined in active_support/core_ext/object/to_query.rb.
+- anchor: with-options
+  title: with_options
+  parent: Extensions to All Objects
+  body: |-
+    The method with_options provides a way to factor out common options in a series of method calls.
+
+    Given a default options hash, with_options yields a proxy object to a block. Within the block, methods called on the proxy are forwarded to the receiver with their options merged. For example, you get rid of the duplication in:
+
+    this way:
+
+    That idiom may convey grouping to the reader as well. For example, say you want to send a newsletter whose language depends on the user. Somewhere in the mailer you could group locale-dependent bits like this:
+
+    Since with_options forwards calls to its receiver they can be nested. Each nesting level will merge inherited defaults in addition to their own.
+
+    Defined in active_support/core_ext/object/with_options.rb.
+- anchor: json-support
+  title: JSON Support
+  parent: Extensions to All Objects
+  body: |-
+    Active Support provides a better implementation of to_json than the json gem ordinarily provides for Ruby objects. This is because some classes, like Hash and Process::Status need special handling in order to provide a proper JSON representation.
+
+    Defined in active_support/core_ext/object/json.rb.
+- anchor: instance-variables
+  title: Instance Variables
+  parent: Extensions to All Objects
+  body: |-
+    Active Support provides several methods to ease access to instance variables.
+
+    instance_values
+
+    The method instance_values returns a hash that maps instance variable names without "@" to their corresponding values. Keys are strings:
+
+    Defined in active_support/core_ext/object/instance_variables.rb.
+
+    instance_variable_names
+
+    The method instance_variable_names returns an array. Each name includes the "@" sign.
+
+    Defined in active_support/core_ext/object/instance_variables.rb.
+- anchor: silencing-warnings-and-exceptions
+  title: Silencing Warnings and Exceptions
+  parent: Extensions to All Objects
+  body: |-
+    The methods silence_warnings and enable_warnings change the value of $VERBOSE accordingly for the duration of their block, and reset it afterwards:
+
+    Silencing exceptions is also possible with suppress. This method receives an arbitrary number of exception classes. If an exception is raised during the execution of the block and is kind_of? any of the arguments, suppress captures it and returns silently. Otherwise the exception is not captured:
+
+    Defined in active_support/core_ext/kernel/reporting.rb.
+- anchor: in-questionmark
+  title: in?
+  parent: Extensions to All Objects
+  body: |-
+    The predicate in? tests if an object is included in another object. An ArgumentError exception will be raised if the argument passed does not respond to include?.
+
+    Examples of in?:
+
+    Defined in active_support/core_ext/object/inclusion.rb.
+- anchor: attributes
+  title: Attributes
+  parent: Extensions to Module
+  body: |-
+    alias_attribute
+
+    Model attributes have a reader, a writer, and a predicate. You can alias a model attribute having the corresponding three methods all defined for you by using alias_attribute. As in other aliasing methods, the new name is the first argument, and the old name is the second (one mnemonic is that they go in the same order as if you did an assignment):
+
+    Defined in active_support/core_ext/module/aliasing.rb.
+
+    Internal Attributes
+
+    When you are defining an attribute in a class that is meant to be subclassed, name collisions are a risk. That's remarkably important for libraries.
+
+    Active Support defines the macros attr_internal_reader, attr_internal_writer, and attr_internal_accessor. They behave like their Ruby built-in attr_* counterparts, except they name the underlying instance variable in a way that makes collisions less likely.
+
+    The macro attr_internal is a synonym for attr_internal_accessor:
+
+    In the previous example it could be the case that :log_level does not belong to the public interface of the library and it is only used for development. The client code, unaware of the potential conflict, subclasses and defines its own :log_level. Thanks to attr_internal there's no collision.
+
+    By default the internal instance variable is named with a leading underscore, @_log_level in the example above. That's configurable via Module.attr_internal_naming_format though, you can pass any sprintf-like format string with a leading @ and a %s somewhere, which is where the name will be placed. The default is "@_%s".
+
+    Rails uses internal attributes in a few spots, for examples for views:
+
+    Defined in active_support/core_ext/module/attr_internal.rb.
+
+    Module Attributes
+
+    The macros mattr_reader, mattr_writer, and mattr_accessor are the same as the cattr_* macros defined for class. In fact, the cattr_* macros are just aliases for the mattr_* macros. Check Class Attributes.
+
+    For example, the API for the logger of Active Storage is generated with mattr_accessor:
+
+    Defined in active_support/core_ext/module/attribute_accessors.rb.
+- anchor: parents
+  title: Parents
+  parent: Extensions to Module
+  body: |-
+    module_parent
+
+    The module_parent method on a nested named module returns the module that contains its corresponding constant:
+
+    If the module is anonymous or belongs to the top-level, module_parent returns Object.
+
+    Note that in that case module_parent_name returns nil.
+
+    Defined in active_support/core_ext/module/introspection.rb.
+
+    module_parent_name
+
+    The module_parent_name method on a nested named module returns the fully qualified name of the module that contains its corresponding constant:
+
+    For top-level or anonymous modules module_parent_name returns nil.
+
+    Note that in that case module_parent returns Object.
+
+    Defined in active_support/core_ext/module/introspection.rb.
+
+    module_parents
+
+    The method module_parents calls module_parent on the receiver and upwards until Object is reached. The chain is returned in an array, from bottom to top:
+
+    Defined in active_support/core_ext/module/introspection.rb.
+- anchor: anonymous
+  title: Anonymous
+  parent: Extensions to Module
+  body: |-
+    A module may or may not have a name:
+
+    You can check whether a module has a name with the predicate anonymous?:
+
+    Note that being unreachable does not imply being anonymous:
+
+    though an anonymous module is unreachable by definition.
+
+    Defined in active_support/core_ext/module/anonymous.rb.
+- anchor: method-delegation
+  title: Method Delegation
+  parent: Extensions to Module
+  body: |-
+    delegate
+
+    The macro delegate offers an easy way to forward methods.
+
+    Let's imagine that users in some application have login information in the User model but name and other data in a separate Profile model:
+
+    With that configuration you get a user's name via their profile, user.profile.name, but it could be handy to still be able to access such attribute directly:
+
+    That is what delegate does for you:
+
+    It is shorter, and the intention more obvious.
+
+    The method must be public in the target.
+
+    The delegate macro accepts several methods:
+
+    When interpolated into a string, the :to option should become an expression that evaluates to the object the method is delegated to. Typically a string or symbol. Such an expression is evaluated in the context of the receiver:
+
+    If the :prefix option is true this is less generic, see below.
+
+    By default, if the delegation raises NoMethodError and the target is nil the exception is propagated. You can ask that nil is returned instead with the :allow_nil option:
+
+    With :allow_nil the call user.name returns nil if the user has no profile.
+
+    The option :prefix adds a prefix to the name of the generated method. This may be handy for example to get a better name:
+
+    The previous example generates address_street rather than street.
+
+    Since in this case the name of the generated method is composed of the target object and target method names, the :to option must be a method name.
+
+    A custom prefix may also be configured:
+
+    In the previous example the macro generates avatar_size rather than size.
+
+    The option :private changes methods scope:
+
+    The delegated methods are public by default. Pass private: true to change that.
+
+    Defined in active_support/core_ext/module/delegation.rb
+
+    delegate_missing_to
+
+    Imagine you would like to delegate everything missing from the User object, to the Profile one. The delegate_missing_to macro lets you implement this in a breeze:
+
+    The target can be anything callable within the object, e.g. instance variables, methods, constants, etc. Only the public methods of the target are delegated.
+
+    Defined in active_support/core_ext/module/delegation.rb.
+- anchor: redefining-methods
+  title: Redefining Methods
+  parent: Extensions to Module
+  body: |-
+    There are cases where you need to define a method with define_method, but don't know whether a method with that name already exists. If it does, a warning is issued if they are enabled. No big deal, but not clean either.
+
+    The method redefine_method prevents such a potential warning, removing the existing method before if needed.
+
+    You can also use silence_redefinition_of_method if you need to define the replacement method yourself (because you're using delegate, for example).
+
+    Defined in active_support/core_ext/module/redefine_method.rb.
+- anchor: class-attributes
+  title: Class Attributes
+  parent: Extensions to Class
+  body: |-
+    class_attribute
+
+    The method class_attribute declares one or more inheritable class attributes that can be overridden at any level down the hierarchy.
+
+    For example ActionMailer::Base defines:
+
+    They can also be accessed and overridden at the instance level.
+
+    The generation of the writer instance method can be prevented by setting the option :instance_writer to false.
+
+    A model may find that option useful as a way to prevent mass-assignment from setting the attribute.
+
+    The generation of the reader instance method can be prevented by setting the option :instance_reader to false.
+
+    For convenience class_attribute also defines an instance predicate which is the double negation of what the instance reader returns. In the examples above it would be called x?.
+
+    When :instance_reader is false, the instance predicate returns a NoMethodError just like the reader method.
+
+    If you do not want the instance predicate, pass instance_predicate: false and it will not be defined.
+
+    Defined in active_support/core_ext/class/attribute.rb.
+
+    cattr_reader, cattr_writer, and cattr_accessor
+
+    The macros cattr_reader, cattr_writer, and cattr_accessor are analogous to their attr_* counterparts but for classes. They initialize a class variable to nil unless it already exists, and generate the corresponding class methods to access it:
+
+    Also, you can pass a block to cattr_* to set up the attribute with a default value:
+
+    Instance methods are also created for convenience, but they are simply proxies to the internal value which is shared among the class. As a result, when an instance modifies the value, this affects the entire class hierarchy. This behavior is different than class_attribute (see above).
+
+    For example:
+
+    The generation of the reader instance method can be prevented by setting :instance_reader to false and the generation of the writer instance method can be prevented by setting :instance_writer to false. Generation of both methods can be prevented by setting :instance_accessor to false. In all cases, the value must be exactly false and not any false value.
+
+    A model may find it useful to set :instance_accessor to false as a way to prevent mass-assignment from setting the attribute.
+
+    Defined in active_support/core_ext/module/attribute_accessors.rb.
+- anchor: extensions-to-class-descendants
+  title: Descendants
+  parent: Extensions to Class
+  body: |-
+    descendants
+
+    The descendants method returns all classes that are < than its receiver:
+
+    The order in which these classes are returned is unspecified.
+
+    Defined in active_support/core_ext/class/subclasses.rb.
+- anchor: output-safety
+  title: Output Safety
+  parent: Extensions to String
+  body: |-
+    Motivation
+
+    Inserting data into HTML templates needs extra care. For example, you can't just interpolate @review.title verbatim into an HTML page. For one thing, if the review title is "Flanagan & Matz rules!" the output won't be well-formed because an ampersand has to be escaped as "&amp;". What's more, depending on the application, that may be a big security hole because users can inject malicious HTML setting a hand-crafted review title. Check out the section about cross-site scripting in the Security guide for further information about the risks.
+
+    Safe Strings
+
+    Active Support has the concept of (html) safe strings. A safe string is one that is marked as being insertable into HTML as is. It is trusted, no matter whether it has been escaped or not.
+
+    Strings are considered to be unsafe by default:
+
+    You can obtain a safe string from a given one with the html_safe method:
+
+    It is important to understand that html_safe performs no escaping whatsoever, it is just an assertion:
+
+    It is your responsibility to ensure calling html_safe on a particular string is fine.
+
+    If you append onto a safe string, either in-place with concat/<<, or with +, the result is a safe string. Unsafe arguments are escaped:
+
+    Safe arguments are directly appended:
+
+    These methods should not be used in ordinary views. Unsafe values are automatically escaped:
+
+    To insert something verbatim use the raw helper rather than calling html_safe:
+
+    or, equivalently, use <%==:
+
+    The raw helper calls html_safe for you:
+
+    Defined in active_support/core_ext/string/output_safety.rb.
+
+    Transformation
+
+    As a rule of thumb, except perhaps for concatenation as explained above, any method that may change a string gives you an unsafe string. These are downcase, gsub, strip, chomp, underscore, etc.
+
+    In the case of in-place transformations like gsub! the receiver itself becomes unsafe.
+
+    The safety bit is lost always, no matter whether the transformation actually changed something.
+
+    Conversion and Coercion
+
+    Calling to_s on a safe string returns a safe string, but coercion with to_str returns an unsafe string.
+
+    Copying
+
+    Calling dup or clone on safe strings yields safe strings.
+- anchor: remove
+  title: remove
+  parent: Extensions to String
+  body: |-
+    The method remove will remove all occurrences of the pattern:
+
+    There's also the destructive version String#remove!.
+
+    Defined in active_support/core_ext/string/filters.rb.
+- anchor: squish
+  title: squish
+  parent: Extensions to String
+  body: |-
+    The method squish strips leading and trailing whitespace, and substitutes runs of whitespace with a single space each:
+
+    There's also the destructive version String#squish!.
+
+    Note that it handles both ASCII and Unicode whitespace.
+
+    Defined in active_support/core_ext/string/filters.rb.
+- anchor: truncate
+  title: truncate
+  parent: Extensions to String
+  body: |-
+    The method truncate returns a copy of its receiver truncated after a given length:
+
+    Ellipsis can be customized with the :omission option:
+
+    Note in particular that truncation takes into account the length of the omission string.
+
+    Pass a :separator to truncate the string at a natural break:
+
+    The option :separator can be a regexp:
+
+    In above examples "dear" gets cut first, but then :separator prevents it.
+
+    Defined in active_support/core_ext/string/filters.rb.
+- anchor: truncate-bytes
+  title: truncate_bytes
+  parent: Extensions to String
+  body: |-
+    The method truncate_bytes returns a copy of its receiver truncated to at most bytesize bytes:
+
+    Ellipsis can be customized with the :omission option:
+
+    Defined in active_support/core_ext/string/filters.rb.
+- anchor: truncate-words
+  title: truncate_words
+  parent: Extensions to String
+  body: |-
+    The method truncate_words returns a copy of its receiver truncated after a given number of words:
+
+    Ellipsis can be customized with the :omission option:
+
+    Pass a :separator to truncate the string at a natural break:
+
+    The option :separator can be a regexp:
+
+    Defined in active_support/core_ext/string/filters.rb.
+- anchor: inquiry
+  title: inquiry
+  parent: Extensions to String
+  body: |-
+    The inquiry method converts a string into a StringInquirer object making equality checks prettier.
+
+    Defined in active_support/core_ext/string/inquiry.rb.
+- anchor: extensions-to-string-starts-with-questionmark-and-ends-with-questionmark
+  title: starts_with? and ends_with?
+  parent: Extensions to String
+  body: |-
+    Active Support defines 3rd person aliases of String#start_with? and String#end_with?:
+
+    Defined in active_support/core_ext/string/starts_ends_with.rb.
+- anchor: strip-heredoc
+  title: strip_heredoc
+  parent: Extensions to String
+  body: |-
+    The method strip_heredoc strips indentation in heredocs.
+
+    For example in
+
+    the user would see the usage message aligned against the left margin.
+
+    Technically, it looks for the least indented line in the whole string, and removes that amount of leading whitespace.
+
+    Defined in active_support/core_ext/string/strip.rb.
+- anchor: indent
+  title: indent
+  parent: Extensions to String
+  body: |-
+    The indent method indents the lines in the receiver:
+
+    The second argument, indent_string, specifies which indent string to use. The default is nil, which tells the method to make an educated guess peeking at the first indented line, and fallback to a space if there is none.
+
+    While indent_string is typically one space or tab, it may be any string.
+
+    The third argument, indent_empty_lines, is a flag that says whether empty lines should be indented. Default is false.
+
+    The indent! method performs indentation in-place.
+
+    Defined in active_support/core_ext/string/indent.rb.
+- anchor: access
+  title: Access
+  parent: Extensions to String
+  body: |-
+    at(position)
+
+    The at method returns the character of the string at position position:
+
+    Defined in active_support/core_ext/string/access.rb.
+
+    from(position)
+
+    The from method returns the substring of the string starting at position position:
+
+    Defined in active_support/core_ext/string/access.rb.
+
+    to(position)
+
+    The to method returns the substring of the string up to position position:
+
+    Defined in active_support/core_ext/string/access.rb.
+
+    first(limit = 1)
+
+    The first method returns a substring containing the first limit characters of the string.
+
+    The call str.first(n) is equivalent to str.to(n-1) if n > 0, and returns an empty string for n == 0.
+
+    Defined in active_support/core_ext/string/access.rb.
+
+    last(limit = 1)
+
+    The last method returns a substring containing the last limit characters of the string.
+
+    The call str.last(n) is equivalent to str.from(-n) if n > 0, and returns an empty string for n == 0.
+
+    Defined in active_support/core_ext/string/access.rb.
+- anchor: inflections
+  title: Inflections
+  parent: Extensions to String
+  body: |-
+    pluralize
+
+    The method pluralize returns the plural of its receiver:
+
+    As the previous example shows, Active Support knows some irregular plurals and uncountable nouns. Built-in rules can be extended in config/initializers/inflections.rb. This file is generated by default, by the rails new command and has instructions in comments.
+
+    pluralize can also take an optional count parameter. If count == 1 the singular form will be returned. For any other value of count the plural form will be returned:
+
+    Active Record uses this method to compute the default table name that corresponds to a model:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    singularize
+
+    The singularize method is the inverse of pluralize:
+
+    Associations compute the name of the corresponding default associated class using this method:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    camelize
+
+    The method camelize returns its receiver in camel case:
+
+    As a rule of thumb you can think of this method as the one that transforms paths into Ruby class or module names, where slashes separate namespaces:
+
+    For example, Action Pack uses this method to load the class that provides a certain session store:
+
+    camelize accepts an optional argument, it can be :upper (default), or :lower. With the latter the first letter becomes lowercase:
+
+    That may be handy to compute method names in a language that follows that convention, for example JavaScript.
+
+    As a rule of thumb you can think of camelize as the inverse of underscore, though there are cases where that does not hold: "SSLError".underscore.camelize gives back "SslError". To support cases such as this, Active Support allows you to specify acronyms in config/initializers/inflections.rb:
+
+    camelize is aliased to camelcase.
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    underscore
+
+    The method underscore goes the other way around, from camel case to paths:
+
+    Also converts "::" back to "/":
+
+    and understands strings that start with lowercase:
+
+    underscore accepts no argument though.
+
+    Rails uses underscore to get a lowercased name for controller classes:
+
+    For example, that value is the one you get in params[:controller].
+
+    As a rule of thumb you can think of underscore as the inverse of camelize, though there are cases where that does not hold. For example, "SSLError".underscore.camelize gives back "SslError".
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    titleize
+
+    The method titleize capitalizes the words in the receiver:
+
+    titleize is aliased to titlecase.
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    dasherize
+
+    The method dasherize replaces the underscores in the receiver with dashes:
+
+    The XML serializer of models uses this method to dasherize node names:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    demodulize
+
+    Given a string with a qualified constant name, demodulize returns the very constant name, that is, the rightmost part of it:
+
+    Active Record for example uses this method to compute the name of a counter cache column:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    deconstantize
+
+    Given a string with a qualified constant reference expression, deconstantize removes the rightmost segment, generally leaving the name of the constant's container:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    parameterize
+
+    The method parameterize normalizes its receiver in a way that can be used in pretty URLs.
+
+    To preserve the case of the string, set the preserve_case argument to true. By default, preserve_case is set to false.
+
+    To use a custom separator, override the separator argument.
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    tableize
+
+    The method tableize is underscore followed by pluralize.
+
+    As a rule of thumb, tableize returns the table name that corresponds to a given model for simple cases. The actual implementation in Active Record is not straight tableize indeed, because it also demodulizes the class name and checks a few options that may affect the returned string.
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    classify
+
+    The method classify is the inverse of tableize. It gives you the class name corresponding to a table name:
+
+    The method understands qualified table names:
+
+    Note that classify returns a class name as a string. You can get the actual class object by invoking constantize on it, explained next.
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    constantize
+
+    The method constantize resolves the constant reference expression in its receiver:
+
+    If the string evaluates to no known constant, or its content is not even a valid constant name, constantize raises NameError.
+
+    Constant name resolution by constantize starts always at the top-level Object even if there is no leading "::".
+
+    So, it is in general not equivalent to what Ruby would do in the same spot, had a real constant be evaluated.
+
+    Mailer test cases obtain the mailer being tested from the name of the test class using constantize:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    humanize
+
+    The method humanize tweaks an attribute name for display to end users.
+
+    Specifically, it performs these transformations:
+
+    Applies human inflection rules to the argument.
+    Deletes leading underscores, if any.
+    Removes a "_id" suffix if present.
+    Replaces underscores with spaces, if any.
+    Downcases all words except acronyms.
+    Capitalizes the first word.
+
+    The capitalization of the first word can be turned off by setting the :capitalize option to false (default is true).
+
+    If "SSL" was defined to be an acronym:
+
+    The helper method full_messages uses humanize as a fallback to include attribute names:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    foreign_key
+
+    The method foreign_key gives a foreign key column name from a class name. To do so it demodulizes, underscores, and adds "_id":
+
+    Pass a false argument if you do not want the underscore in "_id":
+
+    Associations use this method to infer foreign keys, for example has_one and has_many do this:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    upcase_first
+
+    The method upcase_first capitalizes the first letter of the receiver:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+
+    downcase_first
+
+    The method downcase_first converts the first letter of the receiver to lowercase:
+
+    Defined in active_support/core_ext/string/inflections.rb.
+- anchor: extensions-to-string-conversions
+  title: Conversions
+  parent: Extensions to String
+  body: |-
+    to_date, to_time, to_datetime
+
+    The methods to_date, to_time, and to_datetime are basically convenience wrappers around Date._parse:
+
+    to_time receives an optional argument :utc or :local, to indicate which time zone you want the time in:
+
+    Default is :local.
+
+    Please refer to the documentation of Date._parse for further details.
+
+    The three of them return nil for blank receivers.
+
+    Defined in active_support/core_ext/string/conversions.rb.
+- anchor: extensions-to-symbol-starts-with-questionmark-and-ends-with-questionmark
+  title: starts_with? and ends_with?
+  parent: Extensions to Symbol
+  body: |-
+    Active Support defines 3rd person aliases of Symbol#start_with? and Symbol#end_with?:
+
+    Defined in active_support/core_ext/symbol/starts_ends_with.rb.
+- anchor: bytes
+  title: Bytes
+  parent: Extensions to Numeric
+  body: |-
+    All numbers respond to these methods:
+
+    bytes
+    kilobytes
+    megabytes
+    gigabytes
+    terabytes
+    petabytes
+    exabytes
+    zettabytes
+
+    They return the corresponding amount of bytes, using a conversion factor of 1024:
+
+    Singular forms are aliased so you are able to say:
+
+    Defined in active_support/core_ext/numeric/bytes.rb.
+- anchor: extensions-to-numeric-time
+  title: Time
+  parent: Extensions to Numeric
+  body: |-
+    The following methods:
+
+    seconds
+    minutes
+    hours
+    days
+    weeks
+    fortnights
+
+    enable time declarations and calculations, like 45.minutes + 2.hours + 4.weeks. Their return values can also be added to or subtracted from Time objects.
+
+    These methods can be combined with from_now, ago, etc, for precise date calculations. For example:
+
+    For other durations please refer to the time extensions to Integer.
+
+    Defined in active_support/core_ext/numeric/time.rb.
+- anchor: formatting
+  title: Formatting
+  parent: Extensions to Numeric
+  body: |-
+    Enables the formatting of numbers in a variety of ways.
+
+    Produce a string representation of a number as a telephone number:
+
+    Produce a string representation of a number as currency:
+
+    Produce a string representation of a number as a percentage:
+
+    Produce a string representation of a number in delimited form:
+
+    Produce a string representation of a number rounded to a precision:
+
+    Produce a string representation of a number as a human-readable number of bytes:
+
+    Produce a string representation of a number in human-readable words:
+
+    Defined in active_support/core_ext/numeric/conversions.rb.
+- anchor: multiple-of-questionmark
+  title: multiple_of?
+  parent: Extensions to Integer
+  body: |-
+    The method multiple_of? tests whether an integer is multiple of the argument:
+
+    Defined in active_support/core_ext/integer/multiple.rb.
+- anchor: ordinal
+  title: ordinal
+  parent: Extensions to Integer
+  body: |-
+    The method ordinal returns the ordinal suffix string corresponding to the receiver integer:
+
+    Defined in active_support/core_ext/integer/inflections.rb.
+- anchor: ordinalize
+  title: ordinalize
+  parent: Extensions to Integer
+  body: |-
+    The method ordinalize returns the ordinal string corresponding to the receiver integer. In comparison, note that the ordinal method returns only the suffix string.
+
+    Defined in active_support/core_ext/integer/inflections.rb.
+- anchor: extensions-to-integer-time
+  title: Time
+  parent: Extensions to Integer
+  body: |-
+    The following methods:
+
+    months
+    years
+
+    enable time declarations and calculations, like 4.months + 5.years. Their return values can also be added to or subtracted from Time objects.
+
+    These methods can be combined with from_now, ago, etc, for precise date calculations. For example:
+
+    For other durations please refer to the time extensions to Numeric.
+
+    Defined in active_support/core_ext/integer/time.rb.
+- anchor: to-s
+  title: to_s
+  parent: Extensions to BigDecimal
+  body: |-
+    The method to_s provides a default specifier of "F". This means that a simple call to to_s will result in floating-point representation instead of scientific notation:
+
+    Scientific notation is still supported:
+- anchor: index-by
+  title: index_by
+  parent: Extensions to Enumerable
+  body: |-
+    The method index_by generates a hash with the elements of an enumerable indexed by some key.
+
+    It iterates through the collection and passes each element to a block. The element will be keyed by the value returned by the block:
+
+    Keys should normally be unique. If the block returns the same value for different elements no collection is built for that key. The last item will win.
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: index-with
+  title: index_with
+  parent: Extensions to Enumerable
+  body: |-
+    The method index_with generates a hash with the elements of an enumerable as keys. The value is either a passed default or returned in a block.
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: many-questionmark
+  title: many?
+  parent: Extensions to Enumerable
+  body: |-
+    The method many? is shorthand for collection.size > 1:
+
+    If an optional block is given, many? only takes into account those elements that return true:
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: exclude-questionmark
+  title: exclude?
+  parent: Extensions to Enumerable
+  body: |-
+    The predicate exclude? tests whether a given object does not belong to the collection. It is the negation of the built-in include?:
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: including
+  title: including
+  parent: Extensions to Enumerable
+  body: |-
+    The method including returns a new enumerable that includes the passed elements:
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: excluding
+  title: excluding
+  parent: Extensions to Enumerable
+  body: |-
+    The method excluding returns a copy of an enumerable with the specified elements removed:
+
+    excluding is aliased to without.
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: pluck
+  title: pluck
+  parent: Extensions to Enumerable
+  body: |-
+    The method pluck extracts the given key from each element:
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: pick
+  title: pick
+  parent: Extensions to Enumerable
+  body: |-
+    The method pick extracts the given key from the first element:
+
+    Defined in active_support/core_ext/enumerable.rb.
+- anchor: accessing
+  title: Accessing
+  parent: Extensions to Array
+  body: |-
+    Active Support augments the API of arrays to ease certain ways of accessing them. For example, to returns the subarray of elements up to the one at the passed index:
+
+    Similarly, from returns the tail from the element at the passed index to the end. If the index is greater than the length of the array, it returns an empty array.
+
+    The method including returns a new array that includes the passed elements:
+
+    The method excluding returns a copy of the Array excluding the specified elements. This is an optimization of Enumerable#excluding that uses Array#- instead of Array#reject for performance reasons.
+
+    The methods second, third, fourth, and fifth return the corresponding element, as do second_to_last and third_to_last (first and last are built-in). Thanks to social wisdom and positive constructiveness all around, forty_two is also available.
+
+    Defined in active_support/core_ext/array/access.rb.
+- anchor: extensions-to-array-extracting
+  title: Extracting
+  parent: Extensions to Array
+  body: |-
+    The method extract! removes and returns the elements for which the block returns a true value. If no block is given, an Enumerator is returned instead.
+
+    Defined in active_support/core_ext/array/extract.rb.
+- anchor: options-extraction
+  title: Options Extraction
+  parent: Extensions to Array
+  body: |-
+    When the last argument in a method call is a hash, except perhaps for a &block argument, Ruby allows you to omit the brackets:
+
+    That syntactic sugar is used a lot in Rails to avoid positional arguments where there would be too many, offering instead interfaces that emulate named parameters. In particular it is very idiomatic to use a trailing hash for options.
+
+    If a method expects a variable number of arguments and uses * in its declaration, however, such an options hash ends up being an item of the array of arguments, where it loses its role.
+
+    In those cases, you may give an options hash a distinguished treatment with extract_options!. This method checks the type of the last item of an array. If it is a hash it pops it and returns it, otherwise it returns an empty hash.
+
+    Let's see for example the definition of the caches_action controller macro:
+
+    This method receives an arbitrary number of action names, and an optional hash of options as last argument. With the call to extract_options! you obtain the options hash and remove it from actions in a simple and explicit way.
+
+    Defined in active_support/core_ext/array/extract_options.rb.
+- anchor: extensions-to-array-conversions
+  title: Conversions
+  parent: Extensions to Array
+  body: |-
+    to_sentence
+
+    The method to_sentence turns an array into a string containing a sentence that enumerates its items:
+
+    This method accepts three options:
+
+    :two_words_connector: What is used for arrays of length 2. Default is " and ".
+    :words_connector: What is used to join the elements of arrays with 3 or more elements, except for the last two. Default is ", ".
+    :last_word_connector: What is used to join the last items of an array with 3 or more elements. Default is ", and ".
+
+    The defaults for these options can be localized, their keys are:
+
+    Option I18n key
+    :two_words_connector support.array.two_words_connector
+    :words_connector support.array.words_connector
+    :last_word_connector support.array.last_word_connector
+
+    Defined in active_support/core_ext/array/conversions.rb.
+
+    to_fs
+
+    The method to_fs acts like to_s by default.
+
+    If the array contains items that respond to id, however, the symbol :db may be passed as argument. That's typically used with collections of Active Record objects. Returned strings are:
+
+    Integers in the example above are supposed to come from the respective calls to id.
+
+    Defined in active_support/core_ext/array/conversions.rb.
+
+    to_xml
+
+    The method to_xml returns a string containing an XML representation of its receiver:
+
+    To do so it sends to_xml to every item in turn, and collects the results under a root node. All items must respond to to_xml, an exception is raised otherwise.
+
+    By default, the name of the root element is the underscored and dasherized plural of the name of the class of the first item, provided the rest of elements belong to that type (checked with is_a?) and they are not hashes. In the example above that's "contributors".
+
+    If there's any element that does not belong to the type of the first one the root node becomes "objects":
+
+    If the receiver is an array of hashes the root element is by default also "objects":
+
+    If the collection is empty the root element is by default "nil-classes". That's a gotcha, for example the root element of the list of contributors above would not be "contributors" if the collection was empty, but "nil-classes". You may use the :root option to ensure a consistent root element.
+
+    The name of children nodes is by default the name of the root node singularized. In the examples above we've seen "contributor" and "object". The option :children allows you to set these node names.
+
+    The default XML builder is a fresh instance of Builder::XmlMarkup. You can configure your own builder via the :builder option. The method also accepts options like :dasherize and friends, they are forwarded to the builder:
+
+    Defined in active_support/core_ext/array/conversions.rb.
+- anchor: wrapping
+  title: Wrapping
+  parent: Extensions to Array
+  body: |-
+    The method Array.wrap wraps its argument in an array unless it is already an array (or array-like).
+
+    Specifically:
+
+    If the argument is nil an empty array is returned.
+    Otherwise, if the argument responds to to_ary it is invoked, and if the value of to_ary is not nil, it is returned.
+    Otherwise, an array with the argument as its single element is returned.
+
+    This method is similar in purpose to Kernel#Array, but there are some differences:
+
+    If the argument responds to to_ary the method is invoked. Kernel#Array moves on to try to_a if the returned value is nil, but Array.wrap returns an array with the argument as its single element right away.
+    If the returned value from to_ary is neither nil nor an Array object, Kernel#Array raises an exception, while Array.wrap does not, it just returns the value.
+    It does not call to_a on the argument, if the argument does not respond to to_ary it returns an array with the argument as its single element.
+
+    The last point is particularly worth comparing for some enumerables:
+
+    There's also a related idiom that uses the splat operator:
+
+    Defined in active_support/core_ext/array/wrap.rb.
+- anchor: duplicating
+  title: Duplicating
+  parent: Extensions to Array
+  body: |-
+    The method Array#deep_dup duplicates itself and all objects inside recursively with the Active Support method Object#deep_dup. It works like Array#map, sending deep_dup method to each object inside.
+
+    Defined in active_support/core_ext/object/deep_dup.rb.
+- anchor: grouping
+  title: Grouping
+  parent: Extensions to Array
+  body: |-
+    in_groups_of(number, fill_with = nil)
+
+    The method in_groups_of splits an array into consecutive groups of a certain size. It returns an array with the groups:
+
+    or yields them in turn if a block is passed:
+
+    The first example shows how in_groups_of fills the last group with as many nil elements as needed to have the requested size. You can change this padding value using the second optional argument:
+
+    And you can tell the method not to fill the last group by passing false:
+
+    As a consequence false can't be used as a padding value.
+
+    Defined in active_support/core_ext/array/grouping.rb.
+
+    in_groups(number, fill_with = nil)
+
+    The method in_groups splits an array into a certain number of groups. The method returns an array with the groups:
+
+    or yields them in turn if a block is passed:
+
+    The examples above show that in_groups fills some groups with a trailing nil element as needed. A group can get at most one of these extra elements, the rightmost one if any. And the groups that have them are always the last ones.
+
+    You can change this padding value using the second optional argument:
+
+    And you can tell the method not to fill the smaller groups by passing false:
+
+    As a consequence false can't be used as a padding value.
+
+    Defined in active_support/core_ext/array/grouping.rb.
+
+    split(value = nil)
+
+    The method split divides an array by a separator and returns the resulting chunks.
+
+    If a block is passed the separators are those elements of the array for which the block returns true:
+
+    Otherwise, the value received as argument, which defaults to nil, is the separator:
+
+    Observe in the previous example that consecutive separators result in empty arrays.
+
+    Defined in active_support/core_ext/array/grouping.rb.
+- anchor: conversions
+  title: Conversions
+  parent: Extensions to Hash
+  body: |-
+    to_xml
+
+    The method to_xml returns a string containing an XML representation of its receiver:
+
+    To do so, the method loops over the pairs and builds nodes that depend on the values. Given a pair key, value:
+
+    If value is a hash there's a recursive call with key as :root.
+
+    If value is an array there's a recursive call with key as :root, and key singularized as :children.
+
+    If value is a callable object it must expect one or two arguments. Depending on the arity, the callable is invoked with the options hash as first argument with key as :root, and key singularized as second argument. Its return value becomes a new node.
+
+    If value responds to to_xml the method is invoked with key as :root.
+
+    Otherwise, a node with key as tag is created with a string representation of value as text node. If value is nil an attribute "nil" set to "true" is added. Unless the option :skip_types exists and is true, an attribute "type" is added as well according to the following mapping:
+
+    By default the root node is "hash", but that's configurable via the :root option.
+
+    The default XML builder is a fresh instance of Builder::XmlMarkup. You can configure your own builder with the :builder option. The method also accepts options like :dasherize and friends, they are forwarded to the builder.
+
+    Defined in active_support/core_ext/hash/conversions.rb.
+- anchor: merging
+  title: Merging
+  parent: Extensions to Hash
+  body: |-
+    Ruby has a built-in method Hash#merge that merges two hashes:
+
+    Active Support defines a few more ways of merging hashes that may be convenient.
+
+    reverse_merge and reverse_merge!
+
+    In case of collision the key in the hash of the argument wins in merge. You can support option hashes with default values in a compact way with this idiom:
+
+    Active Support defines reverse_merge in case you prefer this alternative notation:
+
+    And a bang version reverse_merge! that performs the merge in place:
+
+    Take into account that reverse_merge! may change the hash in the caller, which may or may not be a good idea.
+
+    Defined in active_support/core_ext/hash/reverse_merge.rb.
+
+    reverse_update
+
+    The method reverse_update is an alias for reverse_merge!, explained above.
+
+    Note that reverse_update has no bang.
+
+    Defined in active_support/core_ext/hash/reverse_merge.rb.
+
+    deep_merge and deep_merge!
+
+    As you can see in the previous example if a key is found in both hashes the value in the one in the argument wins.
+
+    Active Support defines Hash#deep_merge. In a deep merge, if a key is found in both hashes and their values are hashes in turn, then their merge becomes the value in the resulting hash:
+
+    The method deep_merge! performs a deep merge in place.
+
+    Defined in active_support/core_ext/hash/deep_merge.rb.
+- anchor: deep-duplicating
+  title: Deep Duplicating
+  parent: Extensions to Hash
+  body: |-
+    The method Hash#deep_dup duplicates itself and all keys and values inside recursively with Active Support method Object#deep_dup. It works like Enumerator#each_with_object with sending deep_dup method to each pair inside.
+
+    Defined in active_support/core_ext/object/deep_dup.rb.
+- anchor: working-with-keys
+  title: Working with Keys
+  parent: Extensions to Hash
+  body: |-
+    except!
+
+    The method except! is identical to the built-in except method but removes keys in place, returning self.
+
+    If the receiver responds to convert_key, the method is called on each of the arguments. This allows except! (and except) to play nice with hashes with indifferent access for instance:
+
+    Defined in active_support/core_ext/hash/except.rb.
+
+    stringify_keys and stringify_keys!
+
+    The method stringify_keys returns a hash that has a stringified version of the keys in the receiver. It does so by sending to_s to them:
+
+    In case of key collision, the value will be the one most recently inserted into the hash:
+
+    This method may be useful for example to easily accept both symbols and strings as options. For instance ActionView::Helpers::FormHelper defines:
+
+    The second line can safely access the "type" key, and let the user to pass either :type or "type".
+
+    There's also the bang variant stringify_keys! that stringifies keys in place.
+
+    Besides that, one can use deep_stringify_keys and deep_stringify_keys! to stringify all the keys in the given hash and all the hashes nested in it. An example of the result is:
+
+    Defined in active_support/core_ext/hash/keys.rb.
+
+    symbolize_keys and symbolize_keys!
+
+    The method symbolize_keys returns a hash that has a symbolized version of the keys in the receiver, where possible. It does so by sending to_sym to them:
+
+    Note in the previous example only one key was symbolized.
+
+    In case of key collision, the value will be the one most recently inserted into the hash:
+
+    This method may be useful for example to easily accept both symbols and strings as options. For instance ActionText::TagHelper defines
+
+    The third line can safely access the :input key, and let the user to pass either :input or "input".
+
+    There's also the bang variant symbolize_keys! that symbolizes keys in place.
+
+    Besides that, one can use deep_symbolize_keys and deep_symbolize_keys! to symbolize all the keys in the given hash and all the hashes nested in it. An example of the result is:
+
+    Defined in active_support/core_ext/hash/keys.rb.
+
+    to_options and to_options!
+
+    The methods to_options and to_options! are aliases of symbolize_keys and symbolize_keys!, respectively.
+
+    Defined in active_support/core_ext/hash/keys.rb.
+
+    assert_valid_keys
+
+    The method assert_valid_keys receives an arbitrary number of arguments, and checks whether the receiver has any key outside that list. If it does ArgumentError is raised.
+
+    Active Record does not accept unknown options when building associations, for example. It implements that control via assert_valid_keys.
+
+    Defined in active_support/core_ext/hash/keys.rb.
+- anchor: working-with-values
+  title: Working with Values
+  parent: Extensions to Hash
+  body: |-
+    deep_transform_values and deep_transform_values!
+
+    The method deep_transform_values returns a new hash with all values converted by the block operation. This includes the values from the root hash and from all nested hashes and arrays.
+
+    There's also the bang variant deep_transform_values! that destructively converts all values by using the block operation.
+
+    Defined in active_support/core_ext/hash/deep_transform_values.rb.
+- anchor: slicing
+  title: Slicing
+  parent: Extensions to Hash
+  body: |-
+    The method slice! replaces the hash with only the given keys and returns a hash containing the removed key/value pairs.
+
+    Defined in active_support/core_ext/hash/slice.rb.
+- anchor: extensions-to-hash-extracting
+  title: Extracting
+  parent: Extensions to Hash
+  body: |-
+    The method extract! removes and returns the key/value pairs matching the given keys.
+
+    The method extract! returns the same subclass of Hash that the receiver is.
+
+    Defined in active_support/core_ext/hash/slice.rb.
+- anchor: indifferent-access
+  title: Indifferent Access
+  parent: Extensions to Hash
+  body: |-
+    The method with_indifferent_access returns an ActiveSupport::HashWithIndifferentAccess out of its receiver:
+
+    Defined in active_support/core_ext/hash/indifferent_access.rb.
+- anchor: multiline-questionmark
+  title: multiline?
+  parent: Extensions to Regexp
+  body: |-
+    The method multiline? says whether a regexp has the /m flag set, that is, whether the dot matches newlines.
+
+    Rails uses this method in a single place, also in the routing code. Multiline regexps are disallowed for route requirements and this flag eases enforcing that constraint.
+
+    Defined in active_support/core_ext/regexp.rb.
+- anchor: extensions-to-range-to-fs
+  title: to_fs
+  parent: Extensions to Range
+  body: |-
+    Active Support defines Range#to_fs as an alternative to to_s that understands an optional format argument. As of this writing the only supported non-default format is :db:
+
+    As the example depicts, the :db format generates a BETWEEN SQL clause. That is used by Active Record in its support for range values in conditions.
+
+    Defined in active_support/core_ext/range/conversions.rb.
+- anchor: and-include-questionmark
+  title: "=== and include?"
+  parent: Extensions to Range
+  body: |-
+    The methods Range#=== and Range#include? say whether some value falls between the ends of a given instance:
+
+    Active Support extends these methods so that the argument may be another range in turn. In that case we test whether the ends of the argument range belong to the receiver themselves:
+
+    Defined in active_support/core_ext/range/compare_range.rb.
+- anchor: overlap-questionmark
+  title: overlap?
+  parent: Extensions to Range
+  body: |-
+    The method Range#overlap? says whether any two given ranges have non-void intersection:
+
+    Defined in active_support/core_ext/range/overlap.rb.
+- anchor: extensions-to-date-calculations
+  title: Calculations
+  parent: Extensions to Date
+  body: |-
+    The following calculation methods have edge cases in October 1582, since days 5..14 just do not exist. This guide does not document their behavior around those days for brevity, but it is enough to say that they do what you would expect. That is, Date.new(1582, 10, 4).tomorrow returns Date.new(1582, 10, 15) and so on. Please check test/core_ext/date_ext_test.rb in the Active Support test suite for expected behavior.
+
+    Date.current
+
+    Active Support defines Date.current to be today in the current time zone. That's like Date.today, except that it honors the user time zone, if defined. It also defines Date.yesterday and Date.tomorrow, and the instance predicates past?, today?, tomorrow?, next_day?, yesterday?, prev_day?, future?, on_weekday? and on_weekend?, all of them relative to Date.current.
+
+    When making Date comparisons using methods which honor the user time zone, make sure to use Date.current and not Date.today. There are cases where the user time zone might be in the future compared to the system time zone, which Date.today uses by default. This means Date.today may equal Date.yesterday.
+
+    Defined in active_support/core_ext/date/calculations.rb.
+
+    Named Dates
+
+    beginning_of_week, end_of_week
+
+    The methods beginning_of_week and end_of_week return the dates for the beginning and end of the week, respectively. Weeks are assumed to start on Monday, but that can be changed passing an argument, setting thread local Date.beginning_of_week or config.beginning_of_week.
+
+    beginning_of_week is aliased to at_beginning_of_week and end_of_week is aliased to at_end_of_week.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    monday, sunday
+
+    The methods monday and sunday return the dates for the previous Monday and next Sunday, respectively.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    prev_week, next_week
+
+    The method next_week receives a symbol with a day name in English (default is the thread local Date.beginning_of_week, or config.beginning_of_week, or :monday) and it returns the date corresponding to that day.
+
+    The method prev_week is analogous:
+
+    prev_week is aliased to last_week.
+
+    Both next_week and prev_week work as expected when Date.beginning_of_week or config.beginning_of_week are set.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    beginning_of_month, end_of_month
+
+    The methods beginning_of_month and end_of_month return the dates for the beginning and end of the month:
+
+    beginning_of_month is aliased to at_beginning_of_month, and end_of_month is aliased to at_end_of_month.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    quarter, beginning_of_quarter, end_of_quarter
+
+    The method quarter returns the quarter of the receiver's calendar year:
+
+    The methods beginning_of_quarter and end_of_quarter return the dates for the beginning and end of the quarter of the receiver's calendar year:
+
+    beginning_of_quarter is aliased to at_beginning_of_quarter, and end_of_quarter is aliased to at_end_of_quarter.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    beginning_of_year, end_of_year
+
+    The methods beginning_of_year and end_of_year return the dates for the beginning and end of the year:
+
+    beginning_of_year is aliased to at_beginning_of_year, and end_of_year is aliased to at_end_of_year.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    Other Date Computations
+
+    years_ago, years_since
+
+    The method years_ago receives a number of years and returns the same date those many years ago:
+
+    years_since moves forward in time:
+
+    If such a day does not exist, the last day of the corresponding month is returned:
+
+    last_year is short-hand for #years_ago(1).
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    months_ago, months_since
+
+    The methods months_ago and months_since work analogously for months:
+
+    If such a day does not exist, the last day of the corresponding month is returned:
+
+    last_month is short-hand for #months_ago(1).
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    weeks_ago, weeks_since
+
+    The method weeks_ago and weeks_since work analogously for weeks:
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    advance
+
+    The most generic way to jump to other days is advance. This method receives a hash with keys :years, :months, :weeks, :days, and returns a date advanced as much as the present keys indicate:
+
+    Note in the previous example that increments may be negative.
+
+    Defined in active_support/core_ext/date/calculations.rb.
+
+    Changing Components
+
+    The method change allows you to get a new date which is the same as the receiver except for the given year, month, or day:
+
+    This method is not tolerant to non-existing dates, if the change is invalid ArgumentError is raised:
+
+    Defined in active_support/core_ext/date/calculations.rb.
+
+    Durations
+
+    Duration objects can be added to and subtracted from dates:
+
+    They translate to calls to since or advance. For example here we get the correct jump in the calendar reform:
+
+    Timestamps
+
+    The following methods return a Time object if possible, otherwise a DateTime. If set, they honor the user time zone.
+
+    beginning_of_day, end_of_day
+
+    The method beginning_of_day returns a timestamp at the beginning of the day (00:00:00):
+
+    The method end_of_day returns a timestamp at the end of the day (23:59:59):
+
+    beginning_of_day is aliased to at_beginning_of_day, midnight, at_midnight.
+
+    Defined in active_support/core_ext/date/calculations.rb.
+
+    beginning_of_hour, end_of_hour
+
+    The method beginning_of_hour returns a timestamp at the beginning of the hour (hh:00:00):
+
+    The method end_of_hour returns a timestamp at the end of the hour (hh:59:59):
+
+    beginning_of_hour is aliased to at_beginning_of_hour.
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    beginning_of_minute, end_of_minute
+
+    The method beginning_of_minute returns a timestamp at the beginning of the minute (hh:mm:00):
+
+    The method end_of_minute returns a timestamp at the end of the minute (hh:mm:59):
+
+    beginning_of_minute is aliased to at_beginning_of_minute.
+
+    beginning_of_hour, end_of_hour, beginning_of_minute, and end_of_minute are implemented for Time and DateTime but not Date as it does not make sense to request the beginning or end of an hour or minute on a Date instance.
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    ago, since
+
+    The method ago receives a number of seconds as argument and returns a timestamp those many seconds ago from midnight:
+
+    Similarly, since moves forward:
+
+    Defined in active_support/core_ext/date/calculations.rb.
+- anchor: extensions-to-datetime
+  title: Extensions to DateTime
+  parent:
+  body: |-
+    DateTime is not aware of DST rules and so some of these methods have edge cases when a DST change is going on. For example seconds_since_midnight might not return the real amount in such a day.
+- anchor: extensions-to-datetime-calculations
+  title: Calculations
+  parent: Extensions to DateTime
+  body: |-
+    The class DateTime is a subclass of Date so by loading active_support/core_ext/date/calculations.rb you inherit these methods and their aliases, except that they will always return datetimes.
+
+    The following methods are reimplemented so you do not need to load active_support/core_ext/date/calculations.rb for these ones:
+
+    beginning_of_day / midnight / at_midnight / at_beginning_of_day
+    end_of_day
+    ago
+    since / in
+
+    On the other hand, advance and change are also defined and support more options, they are documented below.
+
+    The following methods are only implemented in active_support/core_ext/date_time/calculations.rb as they only make sense when used with a DateTime instance:
+
+    beginning_of_hour / at_beginning_of_hour
+    end_of_hour
+
+    Named Datetimes
+
+    DateTime.current
+
+    Active Support defines DateTime.current to be like Time.now.to_datetime, except that it honors the user time zone, if defined. The instance predicates past? and future? are defined relative to DateTime.current.
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    Other Extensions
+
+    seconds_since_midnight
+
+    The method seconds_since_midnight returns the number of seconds since midnight:
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    utc
+
+    The method utc gives you the same datetime in the receiver expressed in UTC.
+
+    This method is also aliased as getutc.
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    utc?
+
+    The predicate utc? says whether the receiver has UTC as its time zone:
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    advance
+
+    The most generic way to jump to another datetime is advance. This method receives a hash with keys :years, :months, :weeks, :days, :hours, :minutes, and :seconds, and returns a datetime advanced as much as the present keys indicate.
+
+    This method first computes the destination date passing :years, :months, :weeks, and :days to Date#advance documented above. After that, it adjusts the time calling since with the number of seconds to advance. This order is relevant, a different ordering would give different datetimes in some edge-cases. The example in Date#advance applies, and we can extend it to show order relevance related to the time bits.
+
+    If we first move the date bits (that have also a relative order of processing, as documented before), and then the time bits we get for example the following computation:
+
+    but if we computed them the other way around, the result would be different:
+
+    Since DateTime is not DST-aware you can end up in a non-existing point in time with no warning or error telling you so.
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    Changing Components
+
+    The method change allows you to get a new datetime which is the same as the receiver except for the given options, which may include :year, :month, :day, :hour, :min, :sec, :offset, :start:
+
+    If hours are zeroed, then minutes and seconds are too (unless they have given values):
+
+    Similarly, if minutes are zeroed, then seconds are too (unless it has given a value):
+
+    This method is not tolerant to non-existing dates, if the change is invalid ArgumentError is raised:
+
+    Defined in active_support/core_ext/date_time/calculations.rb.
+
+    Durations
+
+    Duration objects can be added to and subtracted from datetimes:
+
+    They translate to calls to since or advance. For example here we get the correct jump in the calendar reform:
+- anchor: calculations
+  title: Calculations
+  parent: Extensions to Time
+  body: |-
+    They are analogous. Please refer to their documentation above and take into account the following differences:
+
+    change accepts an additional :usec option.
+    Time understands DST, so you get correct DST calculations as in
+
+    If since or ago jumps to a time that can't be expressed with Time a DateTime object is returned instead.
+
+    Time.current
+
+    Active Support defines Time.current to be today in the current time zone. That's like Time.now, except that it honors the user time zone, if defined. It also defines the instance predicates past?, today?, tomorrow?, next_day?, yesterday?, prev_day? and future?, all of them relative to Time.current.
+
+    When making Time comparisons using methods which honor the user time zone, make sure to use Time.current instead of Time.now. There are cases where the user time zone might be in the future compared to the system time zone, which Time.now uses by default. This means Time.now.to_date may equal Date.yesterday.
+
+    Defined in active_support/core_ext/time/calculations.rb.
+
+    all_day, all_week, all_month, all_quarter, and all_year
+
+    The method all_day returns a range representing the whole day of the current time.
+
+    Analogously, all_week, all_month, all_quarter and all_year all serve the purpose of generating time ranges.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+
+    prev_day, next_day
+
+    prev_day and next_day return the time in the last or next day:
+
+    Defined in active_support/core_ext/time/calculations.rb.
+
+    prev_month, next_month
+
+    prev_month and next_month return the time with the same day in the last or next month:
+
+    If such a day does not exist, the last day of the corresponding month is returned:
+
+    Defined in active_support/core_ext/time/calculations.rb.
+
+    prev_year, next_year
+
+    prev_year and next_year return a time with the same day/month in the last or next year:
+
+    If date is the 29th of February of a leap year, you obtain the 28th:
+
+    Defined in active_support/core_ext/time/calculations.rb.
+
+    prev_quarter, next_quarter
+
+    prev_quarter and next_quarter return the date with the same day in the previous or next quarter:
+
+    If such a day does not exist, the last day of the corresponding month is returned:
+
+    prev_quarter is aliased to last_quarter.
+
+    Defined in active_support/core_ext/date_and_time/calculations.rb.
+- anchor: time-constructors
+  title: Time Constructors
+  parent: Extensions to Time
+  body: |-
+    Active Support defines Time.current to be Time.zone.now if there's a user time zone defined, with fallback to Time.now:
+
+    Analogously to DateTime, the predicates past?, and future? are relative to Time.current.
+
+    If the time to be constructed lies beyond the range supported by Time in the runtime platform, usecs are discarded and a DateTime object is returned instead.
+
+    Durations
+
+    Duration objects can be added to and subtracted from time objects:
+
+    They translate to calls to since or advance. For example here we get the correct jump in the calendar reform:
+- anchor: atomic-write
+  title: atomic_write
+  parent: Extensions to File
+  body: |-
+    With the class method File.atomic_write you can write to a file in a way that will prevent any reader from seeing half-written content.
+
+    The name of the file is passed as an argument, and the method yields a file handle opened for writing. Once the block is done atomic_write closes the file handle and completes its job.
+
+    For example, Action Pack uses this method to write asset cache files like all.css:
+
+    To accomplish this atomic_write creates a temporary file. That's the file the code in the block actually writes to. On completion, the temporary file is renamed, which is an atomic operation on POSIX systems. If the target file exists atomic_write overwrites it and keeps owners and permissions. However there are a few cases where atomic_write cannot change the file ownership or permissions, this error is caught and skipped over trusting in the user/filesystem to ensure the file is accessible to the processes that need it.
+
+    Due to the chmod operation atomic_write performs, if the target file has an ACL set on it this ACL will be recalculated/modified.
+
+    Note you can't append with atomic_write.
+
+    The auxiliary file is written in a standard directory for temporary files, but you can pass a directory of your choice as second argument.
+
+    Defined in active_support/core_ext/file/atomic.rb.
+- anchor: extensions-to-nameerror
+  title: Extensions to NameError
+  parent:
+  body: |-
+    Active Support adds missing_name? to NameError, which tests whether the exception was raised because of the name passed as argument.
+
+    The name may be given as a symbol or string. A symbol is tested against the bare constant name, a string is against the fully qualified constant name.
+
+    A symbol can represent a fully qualified constant name as in :"ActiveRecord::Base", so the behavior for symbols is defined for convenience, not because it has to be that way technically.
+
+    For example, when an action of ArticlesController is called Rails tries optimistically to use ArticlesHelper. It is OK that the helper module does not exist, so if an exception for that constant name is raised it should be silenced. But it could be the case that articles_helper.rb raises a NameError due to an actual unknown constant. That should be reraised. The method missing_name? provides a way to distinguish both cases:
+
+    Defined in active_support/core_ext/name_error.rb.
+- anchor: extensions-to-loaderror
+  title: Extensions to LoadError
+  parent:
+  body: |-
+    Active Support adds is_missing? to LoadError.
+
+    Given a path name is_missing? tests whether the exception was raised due to that particular file (except perhaps for the ".rb" extension).
+
+    For example, when an action of ArticlesController is called Rails tries to load articles_helper.rb, but that file may not exist. That's fine, the helper module is not mandatory so Rails silences a load error. But it could be the case that the helper module does exist and in turn requires another library that is missing. In that case Rails must reraise the exception. The method is_missing? provides a way to distinguish both cases:
+
+    Defined in active_support/core_ext/load_error.rb.
+- anchor: existence
+  title: existence
+  parent: Extensions to Pathname
+  body: |-
+    The existence method returns the receiver if the named file exists otherwise returns nil. It is useful for idioms like this:
+
+    Defined in active_support/core_ext/pathname/existence.rb.

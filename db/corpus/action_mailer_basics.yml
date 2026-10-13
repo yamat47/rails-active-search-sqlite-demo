@@ -1,0 +1,362 @@
+---
+slug: action_mailer_basics
+title: Action Mailer Basics
+description: This guide provides you with all you need to get started in sending emails from your application, and many internals of Action Mailer.
+url: https://guides.rubyonrails.org/v8.1/action_mailer_basics.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/action_mailer_basics.md
+ref: v8.1.4
+sections:
+- anchor: what-is-action-mailer-questionmark
+  title: What is Action Mailer?
+  parent:
+  body: |-
+    Action Mailer allows you to send emails from your Rails application. It's one of the two email related components in the Rails framework. The other is Action Mailbox, which deals with receiving emails.
+
+    Action Mailer uses classes (called "mailers") and views to create and configure the email to send. Mailers are classes that inherit from ActionMailer::Base. Mailer classes are similar to controller classes. Both have:
+
+    Instance variables that are accessible in views.
+    The ability to use layouts and partials.
+    The ability to access a params hash.
+    Actions and associated views in app/views.
+- anchor: creating-a-mailer-and-views
+  title: Creating a Mailer and Views
+  parent:
+  body: |-
+    This section will provide a step-by-step guide to sending email with Action Mailer. Here are the details of each step.
+- anchor: generate-the-mailer
+  title: Generate the Mailer
+  parent: Creating a Mailer and Views
+  body: |-
+    First, you use the "mailer" generator to create the Mailer related classes:
+
+    Like the UserMailer below, all generated Mailer classes inherit from ApplicationMailer:
+
+    The ApplicationMailer class inherits from ActionMailer::Base, and can be used to define attributes common to all Mailers:
+
+    If you don't want to use a generator, you can also manually add a file to the app/mailers directory. Make sure that your class inherits from ApplicationMailer:
+- anchor: edit-the-mailer
+  title: Edit the Mailer
+  parent: Creating a Mailer and Views
+  body: |-
+    The UserMailer in app/mailers/user_mailer.rb initially doesn't have any methods. So next, we add methods (aka actions) to the mailer that will send specific emails.
+
+    Mailers have methods called "actions" and they use views to structure their content, similar to controllers. While a controller generates HTML content to send back to the client, a Mailer creates a message to be delivered via email.
+
+    Let's add a method called welcome_email to the UserMailer, that will send an email to the user's registered email address:
+
+    The method names in mailers do not have to end in _email.
+
+    Here is a quick explanation of the Mailer related methods used above:
+
+    The default method sets default values for all emails sent from this mailer. In this case, we use it to set the :from header value for all messages in this class. This can be overridden on a per-email basis.
+    The mail method creates the actual email message. We use it to specify the values of headers like :to and :subject per email.
+
+    There is also the headers method (not used above), which is used to specify email headers with a hash or by calling headers[:field_name] = 'value'.
+
+    It is possible to specify an action directly while using the generator like this:
+
+    The above will generate the UserMailer with an empty welcome_email method.
+
+    You can also send multiple emails from a single mailer class. It can be convenient to group related emails together. For example, the above UserMailer can have a goodbye_email (and corresponding view) in addition to the welcome_email.
+- anchor: create-a-mailer-view
+  title: Create a Mailer View
+  parent: Creating a Mailer and Views
+  body: |-
+    Next, for the welcome_email action, you'll need to create a matching view in a file called welcome_email.html.erb in the app/views/user_mailer/ directory. Here is a sample HTML template that can be used for the welcome email:
+
+    The above is the content of the <body> tag. It will be embedded in the default mailer layout, which contains the <html> tag. See Mailer layouts for more.
+
+    You can also create a text version of the above email and store it in welcome_email.text.erb in the app/views/user_mailer/ directory (notice the .text.erb extension vs. the html.erb). Sending both formats is considered best practice because, in case of HTML rendering issues, the text version can serve as a reliable fallback. Here is a sample text email:
+
+    Notice that in both HTML and text email templates you can use the instance variables @user and @url.
+
+    Now, when you call the mail method, Action Mailer will detect the two templates (text and HTML) and automatically generate a multipart/alternative email.
+- anchor: call-the-mailer
+  title: Call the Mailer
+  parent: Creating a Mailer and Views
+  body: |-
+    Once you have a mailer class and view set up, the next step is to actually call the mailer method that renders the email view (i.e. sends the email). Mailers can be thought of as another way of rendering views. Controller actions render a view to be sent over the HTTP protocol. Mailer actions render a view and send it through email protocols instead.
+
+    Let's see an example of using the UserMailer to send a welcome email when a user is successfully created.
+
+    First, let's create a User scaffold:
+
+    Next, we edit the create action in the UserController to send a welcome email when a new user is created. We do this by inserting a call to UserMailer.with(user: @user).welcome_email right after the user is successfully saved.
+
+    We use deliver_later to enqueue the email to be sent later. This way, the controller action will continue without waiting for the email sending code to run. The deliver_later method is backed by Active Job.
+
+    Any key-value pair passed to with becomes the params for the Mailer action. For example, with(user: @user, account: @user.account) makes params[:user] and params[:account] available in the Mailer action.
+
+    With the above mailer, view, and controller set up, if you create a new User, you can examine the logs to see the welcome email being sent. The log file will show the text and HTML versions being sent, like this:
+
+    You can also call the mailer from the Rails console and send emails, perhaps useful as a test before you have a controller action set up. The below will send the same welcome_email as above:
+
+    If you want to send emails right away (from a cronjob for example) you can call deliver_now:
+
+    A method like weekly_summary from UserMailer would return an ActionMailer::MessageDelivery object, which has the methods deliver_now or deliver_later to send itself now or later. The ActionMailer::MessageDelivery object is a wrapper around a Mail::Message. If you want to inspect, alter, or do anything else with the Mail::Message object you can access it with the message method on the ActionMailer::MessageDelivery object.
+
+    Here is an example of the MessageDelivery object from the Rails console example above:
+- anchor: multipart-emails-and-attachments
+  title: Multipart Emails and Attachments
+  parent:
+  body: |-
+    The multipart MIME type represents a document that's comprised of multiple component parts, each of which may have its own individual MIME type (such as the text/html and text/plain). The multipart type encapsulates sending multiple files together in one transaction such as attaching multiple files to an email for example.
+- anchor: adding-attachments
+  title: Adding Attachments
+  parent: Multipart Emails and Attachments
+  body: |-
+    You can add an attachment with Action Mailer by passing the file name and content to the attachments method. Action Mailer will automatically guess the mime_type, set the encoding, and create the attachment.
+
+    When the mail method is triggered, it will send a multipart email with an attachment, properly nested with the top level being multipart/mixed and the first part being a multipart/alternative containing the plain text and HTML email messages.
+
+    The other way to send attachments is to specify the file name, MIME-type and encoding headers, and content. Action Mailer will use the settings you pass in.
+
+    Action Mailer will automatically Base64 encode an attachment. If you want something different, you can encode your content and pass in the encoded content as well as the encoding in a Hash to the attachments method. If you specify an encoding, Action Mailer will not try to Base64 encode the attachment.
+- anchor: making-inline-attachments
+  title: Making Inline Attachments
+  parent: Multipart Emails and Attachments
+  body: |-
+    Sometimes, you may want to send an attachment (e.g. image) inline, so it appears within the email body.
+
+    In order to do this, first, you turn an attachment into an inline attachment by calling #inline:
+
+    Then in the view, you can reference attachments as a hash and specify the file you want to show inline. You can call url on the hash and pass the result into the image_tag method:
+
+    Since this is a standard call to image_tag you can pass in an options hash after the attachment URL as well:
+- anchor: multipart-emails
+  title: Multipart Emails
+  parent: Multipart Emails and Attachments
+  body: |-
+    As demonstrated in Create a Mailer View, Action Mailer will automatically send multipart emails if you have different templates for the same action. For example, if you have a UserMailer with welcome_email.text.erb and welcome_email.html.erb in app/views/user_mailer, Action Mailer will automatically send a multipart email with both the HTML and text versions included as separate parts.
+
+    The Mail gem has helper methods for making a multipart/alternate email for text/plain and text/html MIME types and you can manually create any other type of MIME email.
+
+    The order of the parts getting inserted is determined by the :parts_order inside of the ActionMailer::Base.default method.
+
+    Multipart is also used when you send attachments with email.
+- anchor: mailer-views-and-layouts
+  title: Mailer Views and Layouts
+  parent:
+  body: |-
+    Action Mailer uses view files to specify the content to be sent in emails. Mailer views are located in the app/views/name_of_mailer_class directory by default. Similar to a controller view, the name of the file matches the name of the mailer method.
+
+    Mailer views are rendered within a layout, similar to controller views. Mailer layouts are located in app/views/layouts. The default layout is mailer.html.erb and mailer.text.erb. This section covers various features around mailer views and layouts.
+- anchor: configuring-custom-view-paths
+  title: Configuring Custom View Paths
+  parent: Mailer Views and Layouts
+  body: |-
+    It is possible to change the default mailer view for your action in various ways, as shown below.
+
+    There are template_path and template_name options to the mail method:
+
+    The above configures the mail method to look for a template with the name hello in the app/views/notifications directory. You can also specify an array of paths for template_path, and they will be searched in order.
+
+    If you need more flexibility, you can also pass a block and render a specific template. You can also render plain text inline without using a template file:
+
+    This will render the template another_template.html.erb for the HTML part and "hello" for the text part. The render method is the same one used inside of Action Controller, so you can use all the same options, such as :plain, :inline, etc.
+
+    Lastly, if you need to render a template located outside of the default app/views/mailer_name/ directory, you can apply the prepend_view_path, like so:
+
+    There is also an append_view_path method.
+- anchor: generating-urls-in-action-mailer-views
+  title: Generating URLs in Action Mailer Views
+  parent: Mailer Views and Layouts
+  body: |-
+    In order to add URLs to your mailer, you need to set the host value to your application's domain first. This is because, unlike controllers, the mailer instance doesn't have any context about the incoming request.
+
+    You can configure the default host across the application in config/application.rb:
+
+    Once the host is configured, it is recommended that email views use the *_url with the full URL, and not the *_path helpers with relative URL. Since email clients do not have web request context, *_path helpers have no base URL to form complete web addresses.
+
+    For example, instead of:
+
+    Use:
+
+    By using the full URL, your links will work correctly in your emails.
+
+    Generating URLs with url_for
+
+    The url_for helper generates a full URL, by default, in templates.
+
+    If you haven't configured the :host option globally, you'll need to pass it to url_for.
+
+    Generating URLs with Named Routes
+
+    Similar to other URLs, you need to use the *_url variant of named route helpers in emails as well.
+
+    You either configure the :host option globally or make sure to pass it to the URL helper:
+- anchor: adding-images-in-action-mailer-views
+  title: Adding Images in Action Mailer Views
+  parent: Mailer Views and Layouts
+  body: |-
+    In order to use the image_tag helper in emails, you need to specify the :asset_host parameter. This is because a mailer instance doesn't have any context about the incoming request.
+
+    Usually the :asset_host is consistent across the application, so you can configure it globally in config/application.rb:
+
+    Because we can't infer the protocol from the request, you'll need to specify a protocol such as http:// or https:// in the :asset_host config.
+
+    Now you can display an image inside your email.
+- anchor: caching-mailer-view
+  title: Caching Mailer View
+  parent: Mailer Views and Layouts
+  body: |-
+    You can perform fragment caching in mailer views, similar to application views, using the cache method.
+
+    And to use this feature, you need to enable it in your application's config/environments/*.rb file:
+
+    Fragment caching is also supported in multipart emails. Read more about caching in the Rails caching guide.
+- anchor: action-mailer-layouts
+  title: Action Mailer Layouts
+  parent: Mailer Views and Layouts
+  body: |-
+    Just like controller layouts, you can also have mailer layouts. Mailer layouts are located in app/views/layouts. Here is the default layout:
+
+    The above layout is in a file mailer.html.erb. The default layout name is specified in the ApplicationMailer, as we saw earlier with the line layout "mailer" in the Generate Mailer section. Similar to controller layouts, you use yield to render the mailer view inside the layout.
+
+    To use a different layout for a given mailer, call layout:
+
+    To use a specific layout for a given email, you can pass in a layout: 'layout_name' option to the render call inside the format block:
+
+    The above will render the HTML part using the my_layout.html.erb file and the text part with the usual user_mailer.text.erb file.
+- anchor: sending-email-to-multiple-recipients
+  title: Sending Email to Multiple Recipients
+  parent: Sending Email
+  body: |-
+    It is possible to send an email to more than one recipient by setting the :to field to a list of email addresses. The list of emails can be an array or a single string with the addresses separated by commas.
+
+    For example, to inform all admins of a new registration:
+
+    The same format can be used to add multiple carbon copy (cc) and blind carbon copy (bcc) recipients, by setting the :cc and :bcc keys respectively (similarly to the :to field).
+- anchor: sending-email-with-name
+  title: Sending Email with Name
+  parent: Sending Email
+  body: |-
+    It's possible to show the name, in addition to the email address, of the person who receives the email or sends the email.
+
+    To show the name of the person when they receive the email, you can use email_address_with_name method in to::
+
+    The same method in from: works to display the name of the sender:
+
+    If the name is blank (nil or empty string), it returns the email address.
+- anchor: sending-email-with-subject-translation
+  title: Sending Email with Subject Translation
+  parent: Sending Email
+  body: |-
+    If you don't pass a subject to the mail method, Action Mailer will try to find it in your translations. See the Internationalization Guide for more.
+- anchor: sending-emails-without-template-rendering
+  title: Sending Emails without Template Rendering
+  parent: Sending Email
+  body: |-
+    There may be cases in which you want to skip the template rendering step and instead supply the email body as a string. You can achieve this using the :body option. Remember to set the :content_type option, such as setting it to text/html below. Rails will default to text/plain as the content type.
+- anchor: sending-emails-with-dynamic-delivery-options
+  title: Sending Emails with Dynamic Delivery Options
+  parent: Sending Email
+  body: |-
+    If you wish to override the default delivery configuration (e.g. SMTP credentials) while delivering emails, you can do this using delivery_method_options in the mailer action.
+- anchor: action-mailer-callbacks
+  title: Action Mailer Callbacks
+  parent:
+  body: |-
+    Action Mailer allows for you to specify *_action callbacks to configure the message, and *_deliver callbacks to control the delivery.
+
+    Here is a list with all the available Action Mailer callbacks, listed in the order in which they will get called when sending an email:
+
+    before_action
+    around_action
+    after_action
+    before_deliver
+    around_deliver
+    after_deliver
+
+    Callbacks can be specified with a block or a symbol representing a method name in the mailer class, similar to other callbacks (in controllers or models).
+
+    Here are some examples of when you may use one of these callbacks with mailers.
+- anchor: before-action
+  title: before_action
+  parent: Action Mailer Callbacks
+  body: |-
+    You can use a before_action to set instance variables, populate the mail object with defaults, or insert default headers and attachments.
+- anchor: after-action
+  title: after_action
+  parent: Action Mailer Callbacks
+  body: |-
+    You can use an after_action callback with a similar setup as a before_action but also have access to instance variables that were set in your mailer action.
+
+    You can also use an after_action to override delivery method settings by updating mail.delivery_method.settings.
+- anchor: after-deliver
+  title: after_deliver
+  parent: Action Mailer Callbacks
+  body: |-
+    You could use an after_deliver to record the delivery of the message. It also allows observer/interceptor-like behaviors, but with access to the full mailer context.
+
+    before_action callbacks abort further processing if response_body is set to a non-nil value. before_deliver can abort with throw :abort.
+- anchor: action-mailer-view-helpers
+  title: Action Mailer View Helpers
+  parent:
+  body: |-
+    Action Mailer views have access to most of the same helpers as regular views.
+
+    There are also some Action Mailer-specific helper methods available in ActionMailer::MailHelper. For example, these allow accessing the mailer instance from your view with mailer, and accessing the message as message:
+- anchor: action-mailer-configuration
+  title: Action Mailer Configuration
+  parent:
+  body: |-
+    This section shows some example configurations for Action Mailer.
+
+    For more details on the various configuration options, see the Configuring Rails Applications guide. You can specify configuration options in environment specific files such as production.rb.
+- anchor: example-action-mailer-configuration
+  title: Example Action Mailer Configuration
+  parent: Action Mailer Configuration
+  body: |-
+    Here is an example using the :sendmail delivery method, added to a config/environments/$RAILS_ENV.rb file:
+- anchor: action-mailer-configuration-for-gmail
+  title: Action Mailer Configuration for Gmail
+  parent: Action Mailer Configuration
+  body: |-
+    Add this to your config/environments/$RAILS_ENV.rb file to send via Gmail:
+
+    Google blocks sign-ins from apps it deems less secure. You can change your Gmail settings to allow the attempts. If your Gmail account has 2-factor authentication enabled, then you will need to set an app password and use that instead of your regular password.
+- anchor: previewing-and-testing-mailers
+  title: Previewing and Testing Mailers
+  parent:
+  body: |-
+    You can find detailed instructions on how to test your mailers in the testing guide.
+- anchor: previewing-emails
+  title: Previewing Emails
+  parent: Previewing and Testing Mailers
+  body: |-
+    You can preview rendered email templates visually by visiting a special Action Mailer preview URL. To set up a preview for UserMailer, create a class named UserMailerPreview in the test/mailers/previews/ directory. To see the preview of welcome_email from UserMailer, implement a method that has the same name in UserMailerPreview and call UserMailer.welcome_email:
+
+    Now the preview will be available at http://localhost:3000/rails/mailers/user_mailer/welcome_email.
+
+    If you change something in the mailer view at app/views/user_mailer/welcome_email.html.erb or the mailer itself, the preview will automatically be updated. A list of previews is also available in http://localhost:3000/rails/mailers.
+
+    By default, these preview classes live in test/mailers/previews. This can be configured using the preview_paths option. For example, if you want to add lib/mailer_previews to it, you can configure it in config/application.rb:
+- anchor: rescuing-errors
+  title: Rescuing Errors
+  parent: Previewing and Testing Mailers
+  body: |-
+    Rescue blocks inside of a mailer method cannot rescue errors that occur outside of rendering. For example, record deserialization errors in a background job, or errors from a third-party mail delivery service.
+
+    To rescue errors that occur during any part of the mailing process, use rescue_from:
+- anchor: intercepting-and-observing-emails
+  title: Intercepting and Observing Emails
+  parent:
+  body: |-
+    Action Mailer provides hooks into the Mail observer and interceptor methods. These allow you to register classes that are called during the mail delivery life cycle of every email sent.
+- anchor: intercepting-emails
+  title: Intercepting Emails
+  parent: Intercepting and Observing Emails
+  body: |-
+    Interceptors allow you to make modifications to emails before they are handed off to the delivery agents. An interceptor class must implement the .delivering_email(message) method which will be called before the email is sent.
+
+    The interceptor needs to be registered using the interceptors config option. You can do this in an initializer file like config/initializers/mail_interceptors.rb:
+
+    The example above uses a custom environment called "staging" for a production-like server but for testing purposes. You can read Creating Rails Environments for more information about custom Rails environments.
+- anchor: observing-emails
+  title: Observing Emails
+  parent: Intercepting and Observing Emails
+  body: |-
+    Observers give you access to the email message after it has been sent. An observer class must implement the :delivered_email(message) method, which will be called after the email is sent.
+
+    Similar to interceptors, you must register observers using the observers config option. You can do this in an initializer file like config/initializers/mail_observers.rb:

@@ -1,0 +1,477 @@
+---
+slug: form_helpers
+title: Action View Form Helpers
+description: HTML forms can quickly become tedious to write and maintain because of the need to handle form control naming and its numerous attributes. Rails does away with this complexity by providing view helpers for generating form markup.
+url: https://guides.rubyonrails.org/v8.1/form_helpers.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/form_helpers.md
+ref: v8.1.4
+sections:
+- anchor: working-with-basic-forms
+  title: Working with Basic Forms
+  parent:
+  body: |-
+    The main form helper is form_with.
+
+    When called without arguments, it creates an HTML <form> tag with the value of the method attribute set to post and the value of the action attribute set to the current page. For example, assuming the current page is a home page at /home, the generated HTML will look like this:
+
+    Notice that the form contains an input element with type hidden. This authenticity_token hidden input is required for non-GET form submissions. This token is a security feature in Rails used to prevent cross-site request forgery (CSRF) attacks, and form helpers automatically generate it for every non-GET form (assuming the security feature is enabled). You can read more about it in the Securing Rails Applications guide.
+- anchor: a-generic-search-form
+  title: A Generic Search Form
+  parent: Working with Basic Forms
+  body: |-
+    One of the most basic forms on the web is a search form. This form contains:
+
+    a form element with "GET" method,
+    a label for the input,
+    a text input element, and
+    a submit element.
+
+    Here is how to create a search form with form_with:
+
+    This will generate the following HTML:
+
+    Notice that for the search form we are using the url option of form_with. Setting url: "/search" changes the form action value from the default current page path to action="/search".
+
+    In general, passing url: my_path to form_with tells the form where to make the request. The other option is to pass Active Model objects to the form, as you will learn below. You can also use URL helpers.
+
+    The search form example above also shows the form builder object. You will learn about the many helpers provided by the form builder object (likeform.label and form.text_field) in the next section.
+
+    For every form input element, an id attribute is generated from its name ("query" in above example). These IDs can be very useful for CSS styling or manipulation of form controls with JavaScript.
+
+    Use "GET" as the method for search forms. In general, Rails conventions encourage using the right HTTP verb for controller actions. Using "GET" for search allows users to bookmark a specific search.
+- anchor: helpers-for-generating-form-elements
+  title: Helpers for Generating Form Elements
+  parent: Working with Basic Forms
+  body: |-
+    The form builder object yielded by form_with provides many helper methods for generating common form elements such as text fields, checkboxes, and radio buttons.
+
+    The first argument to these methods is always the name of the input. This is useful to remember because when the form is submitted, that name will be passed to the controller along with the form data in the params hash. The name will be the key in the params for the value entered by the user for that field.
+
+    For example, if the form contains <%= form.text_field :query %>, then you would be able to get the value of this field in the controller with params[:query].
+
+    When naming inputs, Rails uses certain conventions that make it possible to submit parameters with non-scalar values such as arrays or hashes, which will also be accessible in params. You can read more about them in the Form Input Naming Conventions and Params Hash section of this guide. For details on the precise usage of these helpers, please refer to the API documentation.
+
+    Checkboxes
+
+    A Checkbox is a form control that allows for a single value to be selected or deselected. A group of Checkboxes is generally used to allow a user to choose one or more options from the group.
+
+    Here's an example with three checkboxes in a form:
+
+    The above will generate the following:
+
+    The first parameter to checkbox is the name of the input which can be found in the params hash. If the user has checked the "Biography" checkbox only, the params hash would contain:
+
+    You can use params[:biography] to check if that checkbox is selected by the user.
+
+    The checkbox's values (the values that will appear in params) can optionally be specified using the checked_value and unchecked_value parameters. See the API documentation for more details.
+
+    There is also a collection_checkboxes, which you can learn about in the Collection Related Helpers section.
+
+    Radio Buttons
+
+    Radio buttons are form controls that only allow the user to select one option at a time from the list of choices.
+
+    For example, radio buttons for choosing your favorite ice cream flavor:
+
+    The above will generate the following HTML:
+
+    The second argument to radio_button is the value of the input. Because these radio buttons share the same name (flavor), the user will only be able to select one of them, and params[:flavor] will contain either "chocolate_chip", "vanilla", or hazelnut.
+
+    Always use labels for checkbox and radio buttons. They associate text with a specific option using the for attribute and, by expanding the clickable region, make it easier for users to click the inputs.
+- anchor: other-helpers-of-interest
+  title: Other Helpers of Interest
+  parent: Working with Basic Forms
+  body: |-
+    There are many other form controls including text, email, password, date, and time. The below examples show some more helpers and their generated HTML.
+
+    Date and time related helpers:
+
+    Output:
+
+    Helpers with special formatting:
+
+    Output:
+
+    Other common helpers:
+
+    Output:
+
+    Hidden inputs are not shown to the user but instead hold data like any textual input. Values inside them can be changed with JavaScript.
+
+    If you're using password input fields, you might want to configure your application to prevent those parameters from being logged. You can learn about how in the Securing Rails Applications guide.
+- anchor: binding-a-form-to-an-object
+  title: Binding a Form to an Object
+  parent: Creating Forms with Model Objects
+  body: |-
+    The form_with helper has a :model option that allows you to bind the form builder object to a model object. This means that the form will be scoped to that model object, and the form's fields will be populated with values from that model object.
+
+    For example, if we have a @book model object:
+
+    And the following form to create a new book:
+
+    It will generate this HTML:
+
+    Some important things to notice when using form_with with a model object:
+
+    The form action is automatically filled with an appropriate value, action="/books". If you were updating a book, it would be action="/books/42".
+    The form field names are scoped with book[...]. This means that params[:book] will be a hash containing all these field's values. You can read more about the significance of input names in chapter Form Input Naming Conventions and Params Hash of this guide.
+    The submit button is automatically given an appropriate text value, "Create Book" in this case.
+
+    Typically your form inputs will mirror model attributes. However, they don't have to. If there is other information you need you can include a field in your form and access it via params[:book][:my_non_attribute_input].
+
+    Composite Primary Key Forms
+
+    If you have a model with a composite primary key, the form building syntax is the same with slightly different output.
+
+    For example, to update a @book model object with a composite key [:author_id, :id] like this:
+
+    The following form:
+
+    Will generate this HTML output:
+
+    Note the generated URL contains the author_id and id delimited by an underscore. Once submitted, the controller can extract each primary key value from the parameters and update the record as it would with a singular primary key.
+
+    The fields_for Helper
+
+    The fields_for helper is used to render fields for related model objects within the same form. The associated "inner" model is usually related to the "main" form model via an Active Record association. For example, if you had a Person model with an associated ContactDetail model, you could create a single form with inputs for both models like so:
+
+    The above will produce the following output:
+
+    The object yielded by fields_for is a form builder like the one yielded by form_with. The fields_for helper creates a similar binding but without rendering a <form> tag. You can learn more about fields_for in the API docs.
+- anchor: relying-on-record-identification
+  title: Relying on Record Identification
+  parent: Creating Forms with Model Objects
+  body: |-
+    When dealing with RESTful resources, calls to form_with can be simplified by relying on record identification. This means you pass the model instance and have Rails figure out the model name, method, and other things. In the example below for creating a new record, both calls to form_with generate the same HTML:
+
+    Similarly, for editing an existing article like below, both the calls to form_with will also generate the same HTML:
+
+    Notice how the short-hand form_with invocation is conveniently the same, regardless of the record being new or existing. Record identification is smart enough to figure out if the record is new by asking record.persisted?. It also selects the correct path to submit to, and the name based on the class of the object.
+
+    This is assuming that the Article model is declared with resources :articles in the routes file.
+
+    If you have a singular resource, you will need to call resource and resolve for it to work with form_with:
+
+    Declaring a resource has a number of side effects. See the Rails Routing from the Outside In guide for more information on setting up and using resources.
+
+    When you're using single-table inheritance with your models, you can't rely on record identification on a subclass if only their parent class is declared a resource. You will have to specify :url, and :scope (the model name) explicitly.
+- anchor: working-with-namespaces
+  title: Working with Namespaces
+  parent: Creating Forms with Model Objects
+  body: |-
+    If you have namespaced routes, form_with has a shorthand for that. For example, if your application has an admin namespace:
+
+    The above will create a form that submits to the Admin::ArticlesController inside the admin namespace, therefore submitting to admin_article_path(@article) in the case of an update.
+
+    If you have several levels of namespacing then the syntax is similar:
+
+    For more information on Rails' routing system and the associated conventions, please see the Rails Routing from the Outside In guide.
+- anchor: forms-with-patch-put-or-delete-methods
+  title: Forms with PATCH, PUT, or DELETE Methods
+  parent: Creating Forms with Model Objects
+  body: |-
+    The Rails framework encourages RESTful design, which means forms in your application will make requests where the method is PATCH, PUT, or DELETE in addition to GET and POST. However, HTML forms don't support methods other than GET and POST when it comes to submitting forms.
+
+    Rails works around this limitation by emulating other methods over POST with a hidden input named "_method". For example:
+
+    The above form Will generate this HTML output:
+
+    When parsing POSTed data, Rails will take into account the special _method parameter and proceed as if the request's HTTP method was the one set as the value of _method (PATCH in this example).
+
+    When rendering a form, submission buttons can override the declared method attribute through the formmethod: keyword:
+
+    Similar to <form> elements, most browsers don't support overriding form methods declared through formmethod other than GET and POST.
+
+    Rails works around this issue by emulating other methods over POST through a combination of formmethod, value, and name attributes:
+
+    In this case, the "Update" button will be treated as PATCH and the "Delete" button will be treated as DELETE.
+- anchor: making-select-boxes-with-ease
+  title: Making Select Boxes with Ease
+  parent:
+  body: |-
+    Select boxes, also known as drop-down list, allow users to select from a list of options. The HTML for select boxes requires a decent amount of markup - one <option> element for each option to choose from. Rails provides helper methods to help generate that markup.
+
+    For example, let's say we have a list of cities for the user to choose from. We can use the select helper:
+
+    The above will generate this HTML output:
+
+    And the selection will be available in params[:city] as usual.
+
+    We can also specify <option> values that differ from their labels:
+
+    Output:
+
+    This way, the user will see the full city name, but params[:city] will be one of "BE", "CHI", or "MD".
+
+    Lastly, we can specify a default choice for the select box with the :selected argument:
+
+    Output:
+- anchor: option-groups-for-select-boxes
+  title: Option Groups for Select Boxes
+  parent: Making Select Boxes with Ease
+  body: |-
+    In some cases we may want to improve the user experience by grouping related options together. We can do so by passing a Hash (or comparable Array) to select:
+
+    Output:
+- anchor: binding-select-boxes-to-model-objects
+  title: Binding Select Boxes to Model Objects
+  parent: Making Select Boxes with Ease
+  body: |-
+    Like other form controls, a select box can be bound to a model attribute. For example, if we have a @person model object like:
+
+    The following form:
+
+    Will output this select box:
+
+    The only difference is that the selected option will be found in params[:person][:city] instead of params[:city].
+
+    Notice that the appropriate option was automatically marked selected="selected". Since this select box was bound to an existing @person record, we didn't need to specify a :selected argument.
+- anchor: using-date-and-time-form-helpers
+  title: Using Date and Time Form Helpers
+  parent:
+  body: |-
+    In addition to the date_field and time_field helpers mentioned earlier, Rails provides alternative date and time form helpers that render plain select boxes. The date_select helper renders a separate select box for year, month, and day.
+
+    For example, if we have a @person model object like:
+
+    The following form:
+
+    Will output select boxes like:
+
+    Notice that, when the form is submitted, there will be no single value in the params hash that contains the full date. Instead, there will be several values with special names like "birth_date(1i)". However, Active Model knows how to assemble these values into a full date, based on the declared type of the model attribute. So we can pass params[:person] to Person.new or Person#update just like we would if the form used a single field to represent the full date.
+
+    In addition to the date_select helper, Rails provides time_select which outputs select boxes for the hour and minute. There is datetime_select as well which combines both date and time select boxes.
+- anchor: select-boxes-for-time-or-date-components
+  title: Select Boxes for Time or Date Components
+  parent: Using Date and Time Form Helpers
+  body: |-
+    Rails also provides helpers to render select boxes for individual date and time components: select_year, select_month, select_day, select_hour, select_minute, and select_second. These helpers are "bare" methods, meaning they are not called on a form builder instance. For example:
+
+    The above outputs a select box like:
+
+    For each of these helpers, you may specify a Date or Time object instead of a number as the default value (for example <%= select_year Date.today, prefix: "party" %> instead of the above), and the appropriate date and time parts will be extracted and used.
+- anchor: selecting-time-zone
+  title: Selecting Time Zone
+  parent: Using Date and Time Form Helpers
+  body: |-
+    When you need to ask users what time zone they are in, there is a very convenient time_zone_select helper to use.
+
+    Typically, you would have to provide a list of time zone options for users to select from. This can get tedious if not for the list of pre-defined ActiveSupport::TimeZone objects. The time_with_zone helper wraps this and can be used as follows:
+
+    Output:
+- anchor: collection-related-helpers
+  title: Collection Related Helpers
+  parent:
+  body: |-
+    If you need to generate a set of choices from a collection of arbitrary objects, Rails has collection_select, collection_radio_button, and collection_checkboxes helpers.
+
+    To see when these helpers are useful, suppose you have a City model and corresponding belongs_to :city association with Person:
+
+    Assuming we have the following cities stored in the database:
+
+    We can allow the user to choose from the cities with the following form:
+
+    The above will generate this HTML:
+
+    The above example shows how you'd generate the choices manually. However, Rails has helpers that generate choices from a collection without having to explicitly iterate over it. These helpers determine the value and text label of each choice by calling specified methods on each object in the collection.
+
+    When rendering a field for a belongs_to association, you must specify the name of the foreign key (city_id in the above example), rather than the name of the association itself.
+- anchor: the-collection-select-helper
+  title: The collection_select Helper
+  parent: Collection Related Helpers
+  body: |-
+    To generate a select box, we can use collection_select:
+
+    The above outputs the same HTML as the manual iteration above:
+
+    The order of arguments for collection_select is different from the order for select. With collection_select we specify the value method first (:id in the example above), and the text label method second (:name in the example above). This is opposite of the order used when specifying choices for the select helper, where the text label comes first and the value second (["Berlin", 1] in the previous example).
+- anchor: the-collection-radio-buttons-helper
+  title: The collection_radio_buttons Helper
+  parent: Collection Related Helpers
+  body: |-
+    To generate a set of radio buttons, we can use collection_radio_buttons:
+
+    Output:
+- anchor: the-collection-checkboxes-helper
+  title: The collection_checkboxes Helper
+  parent: Collection Related Helpers
+  body: |-
+    To generate a set of check boxes — for example, to support a has_and_belongs_to_many association — we can use collection_checkboxes:
+
+    Output:
+- anchor: uploading-files
+  title: Uploading Files
+  parent:
+  body: |-
+    A common task with forms is allowing users to upload a file. It could be an avatar image or a CSV file with data to process. File upload fields can be rendered with the file_field helper.
+
+    The most important thing to remember with file uploads is that the rendered form's enctype attribute must be set to multipart/form-data. This is done automatically if you use a file_field inside a form_with. You can also set the attribute manually:
+
+    Both of which, output the following HTML form:
+
+    Note that, per form_with conventions, the field names in the two forms above will be different. In the first form, it will be person[csv_file] (accessible via params[:person][:csv_file]), and in the second form it will be just csv_file (accessible via params[:csv_file]).
+- anchor: csv-file-upload-example
+  title: CSV File Upload Example
+  parent: Uploading Files
+  body: |-
+    When using file_field, the object in the params hash is an instance of ActionDispatch::Http::UploadedFile. Here is an example of how to save data in an uploaded CSV file to records in your application:
+
+    If the file is an image that needs to be stored with a model (e.g. user's profile picture), there are a number of tasks to consider, like where to store the file (on Disk, Amazon S3, etc), resizing image files, and generating thumbnails, etc. Active Storage is designed to assist with these tasks.
+- anchor: customizing-form-builders
+  title: Customizing Form Builders
+  parent:
+  body: |-
+    We call the objects yielded by form_with or fields_for Form Builders. Form builders allow you to generate form elements associated with a model object and are an instance of ActionView::Helpers::FormBuilder. This class can be extended to add custom helpers for your application.
+
+    For example, if you want to display a text_field along with a label across your application, you could add the following helper method to application_helper.rb:
+
+    And use it in a form as usual:
+
+    But you can also create a subclass of ActionView::Helpers::FormBuilder, and add the helpers there. After defining this LabellingFormBuilder subclass:
+
+    The above form can be replaced with:
+
+    If you reuse this frequently you could define a labeled_form_with helper that automatically applies the builder: LabellingFormBuilder option:
+
+    The above can be used instead of form_with:
+
+    All three cases above (the text_field_with_label helper, the LabellingFormBuilder subclass, and the labeled_form_with helper) will generate the same HTML output:
+
+    The form builder used also determines what happens when you do:
+
+    If f is an instance of ActionView::Helpers::FormBuilder, then this will render the form partial, setting the partial's object to the form builder. If the form builder is of class LabellingFormBuilder, then the labelling_form partial would be rendered instead.
+
+    Form builder customizations, such as LabellingFormBuilder, do hide the implementation details (and may seem like an overkill for the simple example above). Choose between different customizations, extending FormBuilder class or creating helpers, based on how frequently your forms use the custom elements.
+- anchor: form-input-naming-conventions-and-params-hash
+  title: Form Input Naming Conventions and params Hash
+  parent:
+  body: |-
+    All of the form helpers described above help with generating the HTML for form elements so that the user can enter various types of input. How do you access the user input values in the Controller? The params hash is the answer. You've already seen the params hash in the above example. This section will more explicitly go over naming conventions around how form input is structured in the params hash.
+
+    The params hash can contain arrays and arrays of hashes. Values can be at the top level of the params hash or nested in another hash. For example, in a standard create action for a Person model, params[:person] will be a hash of all the attributes for the Person object.
+
+    Note that HTML forms don't have an inherent structure to the user input data, all they generate is name-value string pairs. The arrays and hashes you see in your application are the result of parameter naming conventions that Rails uses.
+
+    The fields in the params hash need to be permitted in the controller.
+- anchor: basic-structure
+  title: Basic Structure
+  parent: Form Input Naming Conventions and params Hash
+  body: |-
+    The two basic structures for user input form data are arrays and hashes.
+
+    Hashes mirror the syntax used for accessing the value in params. For example, if a form contains:
+
+    the params hash will contain
+
+    and params[:person][:name] will retrieve the submitted value in the controller.
+
+    Hashes can be nested as many levels as required, for example:
+
+    The above will result in the params hash being
+
+    The other structure is an Array. Normally Rails ignores duplicate parameter names, but if the parameter name ends with an empty set of square brackets [] then the parameters will be accumulated in an Array.
+
+    For example, if you want users to be able to input multiple phone numbers, you could place this in the form:
+
+    This would result in params[:person][:phone_number] being an array containing the submitted phone numbers:
+- anchor: combining-arrays-and-hashes
+  title: Combining Arrays and Hashes
+  parent: Form Input Naming Conventions and params Hash
+  body: |-
+    You can mix and match these two concepts. One element of a hash might be an array as in the previous example params[:person] hash has a key called [:phone_number] whose value is an array.
+
+    You also can have an array of hashes. For example, you can create any number of addresses by repeating the following form fragment:
+
+    This would result in params[:person][:addresses] being an array of hashes. Each hash in the array will have the keys line1, line2, and city, something like this:
+
+    It's important to note that while hashes can be nested arbitrarily, only one level of "arrayness" is allowed. Arrays can usually be replaced by hashes. For example, instead of an array of model objects, you can have a hash of model objects keyed by their id or similar.
+
+    Array parameters do not play well with the checkbox helper. According to the HTML specification unchecked checkboxes submit no value. However it is often convenient for a checkbox to always submit a value. The checkbox helper fakes this by creating an auxiliary hidden input with the same name. If the checkbox is unchecked only the hidden input is submitted. If it is checked then both are submitted but the value submitted by the checkbox takes precedence. There is a include_hidden option that can be set to false if you want to omit this hidden field. By default, this option is true.
+- anchor: hashes-with-an-index
+  title: Hashes with an Index
+  parent: Form Input Naming Conventions and params Hash
+  body: |-
+    Let's say you want to render a form with a set of fields for each of a person's addresses. The fields_for helper with its :index option can assist:
+
+    Assuming the person has two addresses with IDs 23 and 45, the above form would render this output:
+
+    Which will result in a params hash that looks like:
+
+    All of the form inputs map to the "person" hash because we called fields_for on the person_form form builder. Also, by specifying index: address.id, we rendered the name attribute of each city input as person[address][#{address.id}][city] instead of person[address][city]. This way you can tell which Address records should be modified when processing the params hash.
+
+    You can find more details about fields_for index option in the API docs.
+- anchor: building-complex-forms
+  title: Building Complex Forms
+  parent:
+  body: |-
+    As your application grows, you may need to create more complex forms, beyond editing a single object. For example, when creating a Person you can allow the user to create multiple Address records (home, work, etc.) within the same form. When editing a Person record later, the user should be able to add, remove, or update addresses as well.
+- anchor: configuring-the-model-for-nested-attributes
+  title: Configuring the Model for Nested Attributes
+  parent: Building Complex Forms
+  body: |-
+    For editing an associated record for a given model (Person in this case), Active Record provides model level support via the accepts_nested_attributes_for method:
+
+    This creates an addresses_attributes= method on Person that allows you to create, update, and destroy addresses.
+- anchor: nested-forms-in-the-view
+  title: Nested Forms in the View
+  parent: Building Complex Forms
+  body: |-
+    The following form allows a user to create a Person and its associated addresses.
+
+    When an association accepts nested attributes, fields_for renders its block once for every element of the association. In particular, if a person has no addresses, it renders nothing.
+
+    A common pattern is for the controller to build one or more empty children so that at least one set of fields is shown to the user. The example below would result in 2 sets of address fields being rendered on the new person form.
+
+    For example, the above form_with with this change:
+
+    Will output the following HTML:
+
+    The fields_for yields a form builder. The parameter names will be what accepts_nested_attributes_for expects. For example, when creating a person with 2 addresses, the submitted parameters in params would look like this:
+
+    The actual value of the keys in the :addresses_attributes hash is not important. But they need to be strings of integers and different for each address.
+
+    If the associated object is already saved, fields_for autogenerates a hidden input with the id of the saved record. You can disable this by passing include_id: false to fields_for.
+- anchor: permitting-parameters-in-the-controller
+  title: Permitting Parameters in the Controller
+  parent: Building Complex Forms
+  body: |-
+    As usual you need to declare the permitted parameters in the controller before you pass them to the model:
+- anchor: removing-associated-objects
+  title: Removing Associated Objects
+  parent: Building Complex Forms
+  body: |-
+    You can allow users to delete associated objects by passing allow_destroy: true to accepts_nested_attributes_for
+
+    If the hash of attributes for an object contains the key _destroy with a value that evaluates to true (e.g. 1, '1', true, or 'true') then the object will be destroyed. This form allows users to remove addresses:
+
+    The HTML for the _destroy field:
+
+    You also need to update the permitted params in your controller to include the _destroy field:
+- anchor: preventing-empty-records
+  title: Preventing Empty Records
+  parent: Building Complex Forms
+  body: |-
+    It is often useful to ignore sets of fields that the user has not filled in. You can control this by passing a :reject_if proc to accepts_nested_attributes_for. This proc will be called with each hash of attributes submitted by the form. If the proc returns true then Active Record will not build an associated object for that hash. The example below only tries to build an address if the kind attribute is set.
+
+    As a convenience you can instead pass the symbol :all_blank which will create a proc that will reject records where all the attributes are blank excluding any value for _destroy.
+- anchor: forms-to-external-resources
+  title: Forms to External Resources
+  parent:
+  body: |-
+    Rails form helpers can be used to build a form for posting data to an external resource. If the external API expects an authenticity_token for the resource, this can be passed as an authenticity_token: 'your_external_token' parameter to form_with:
+
+    At other times, the fields that can be used in the form are limited by an external API and it may be undesirable to generate an authenticity_token. To not send a token, you can pass false to the :authenticity_token option:
+- anchor: using-tag-helpers-without-a-form-builder
+  title: Using Tag Helpers without a Form Builder
+  parent:
+  body: |-
+    In case you need to render form fields outside of the context of a form builder, Rails provides tag helpers for common form elements. For example, checkbox_tag:
+
+    Output:
+
+    Generally, these helpers have the same name as their form builder counterparts plus a _tag suffix. For a complete list, see the FormTagHelper API documentation.
+- anchor: using-form-tag-and-form-for
+  title: Using form_tag and form_for
+  parent:
+  body: |-
+    Before form_with was introduced in Rails 5.1 its functionality was split between form_tag and form_for. Both are now discouraged in favor of form_with, but you can still find them being used in some codebases.

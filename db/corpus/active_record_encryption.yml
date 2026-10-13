@@ -1,0 +1,358 @@
+---
+slug: active_record_encryption
+title: Active Record Encryption
+description: This guide covers encrypting your database information using Active Record.
+url: https://guides.rubyonrails.org/v8.1/active_record_encryption.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/active_record_encryption.md
+ref: v8.1.4
+sections:
+- anchor: why-encrypt-data-at-the-application-level-questionmark
+  title: Why Encrypt Data at the Application Level?
+  parent:
+  body: |-
+    Encrypting specific attributes at the application level adds an additional security layer. For example, if someone gains access to your application logs or database backup, the encrypted data remains unreadable. It also helps avoid accidental exposure of sensitive information in your application console or logs.
+
+    Most importantly, this feature lets you explicitly define what data is sensitive in your code. This enables precise access control throughout your application and any connected services. For example, you can use tools like console1984 to restrict decrypted data access in the Rails console. You can also take advantage of automatic parameter filtering for encrypted fields.
+- anchor: setup
+  title: Setup
+  parent:
+  body: |-
+    To start using Active Record Encryption, you need to generate keys and declare attributes you want to encrypt in the model.
+- anchor: generate-encryption-key
+  title: Generate Encryption Key
+  parent: Setup
+  body: |-
+    You can generate a random key set by running bin/rails db:encryption:init:
+
+    These values can be stored by copying and pasting the generated values into your existing Rails credentials file using bin/rails credentials:edit.
+
+    Alternatively, the encryption keys can also be configured from other sources, such as environment variables:
+
+    It's recommended to use Rails built-in credentials support to store keys. If you set them manually via configuration properties, make sure you don't commit them with your code (e.g. use environment variables).
+
+    The generated values are 32 bytes in length. If you generate these yourself, the recommended minimum length is 12 bytes for the primary key and 20 bytes for the salt.
+
+    Once the keys are generated and stored, you can start using Active Record Encryption by declaring attributes to be encrypted in the model.
+- anchor: declare-encrypted-attributes
+  title: Declare Encrypted Attributes
+  parent: Setup
+  body: |-
+    The encrypts method defines the attributes to be encrypted at the model level. These are regular Active Record attributes backed by a column with the same name.
+
+    Active Record Encryption will transparently encrypt these attributes before saving them to the database and will decrypt them upon retrieval. For example:
+
+    However, in the Rails console, the executed SQL looks like this:
+
+    The value inserted is a JSON object that contains the encrypted value for the title attribute. More specifically, the JSON object stores two keys: p for payload and h for headers. The ciphertext, which is compressed and encoded in Base64, is stored as the payload. The h key stores metadata needed to decrypt the value. The iv value is the initialization vector and at is authentication tag (used to ensure the ciphertext has not been tampered with).
+
+    When looking at the Article in the Rails console, the encrypted attribute title will also be filtered:
+- anchor: important-storage-considerations
+  title: 'Important: Storage Considerations'
+  parent: Setup
+  body: |-
+    Encrypted data takes more storage because Active Record Encryption stores additional metadata alongside the encrypted payload, and the payload itself is Base64-encoded so it can fit safely in text-based columns.
+
+    When using the built-in envelope encryption key provider, you can estimate the worst-case overhead to be around 255 bytes. This overhead is negligible for larger sizes. Encryption also uses compression by default, which can offer up to 30% storage savings over the unencrypted version for larger payloads.
+
+    When using string columns, it’s important to know that modern databases define the column size in terms of number of characters, not bytes. With encodings like UTF-8, a single character can take up to four bytes. This means that a column defined to hold N characters may actually consume up to 4 × N bytes in storage.
+
+    Since an encrypted payload is binary data serialized with Base64, it can be stored in regular a string column. Because it's a sequence of ASCII bytes, an encrypted column can take up to four times its clear version size. So, even if the bytes stored in the database are the same, the column must be four times bigger.
+
+    In practice, this means:
+
+    When encrypting short texts written in Western alphabets (mostly ASCII characters), you should account for that 255 additional overhead when defining the column size.
+    When encrypting short texts written in non-Western alphabets, such as Cyrillic, you should multiply the column size by 4. Notice that the storage overhead is 255 bytes at most.
+    When encrypting long texts, you can ignore column size concerns.
+
+    For example:
+
+    Content to encrypt Original column size Recommended encrypted column size Storage overhead (worst case)
+    Email addresses string(255) string(510) 255 bytes
+    Short sequence of emojis string(255) string(1020) 255 bytes
+    Summary of texts written in non-western alphabets string(500) string(2000) 255 bytes
+    Arbitrary long text text text negligible
+- anchor: querying-encrypted-data-deterministic-vs-non-deterministic-encryption
+  title: 'Querying Encrypted Data: Deterministic vs. Non-deterministic Encryption'
+  parent: Basic Usage
+  body: |-
+    By default, Active Record Encryption is non-deterministic, which means that encrypting the same value with the same key twice will result in different encrypted values (aka ciphertexts). The non-deterministic approach improves security by making crypto-analysis of ciphertexts harder. However, it also means that queries (such as WHERE title = "Encrypt it all!") on encrypted values are not possible, since the same plaintext value can result in a different encrypted value that does not match the encrypted value previously stored in the JSON document.
+
+    You can use deterministic encryption if you need to query using encrypted values. For example, the email field on the Author model below:
+
+    The :deterministic option generates initialization vectors in a deterministic way, meaning it will produce the same encrypted output given the same plaintext input value. This makes querying encrypted attributes possible by string equality comparison. For example, notice that the p and iv key in the JSON document have the same value when we create and when we query an Author's email:
+
+    In the above example, the initialization vector, iv, has the value "NgqthINGlvoN+fhP" for the same string. Even if you use the same email string in a different model instance (or different attribute with deterministic encryption), it will map to the same p and iv values:
+
+    The :deterministic option allows for querying by trading off lesser security. The data is still encrypted but the determinism makes crypto-analysis easier. For this reason, non-deterministic encryption is recommended for all data unless you need to query by the encrypted attribute.
+
+    In non-deterministic mode, Active Record uses AES-GCM with a 256-bits key and a random initialization vector. In deterministic mode, it also uses AES-GCM, but the initialization vector is not random. It is generated as a function of the key and the plaintext content (HMAC-SHA-256 digest of the two).
+
+    If you do not define a deterministic_key, then you have effectively disabled deterministic encryption.
+- anchor: ignoring-case
+  title: Ignoring Case
+  parent: Basic Usage
+  body: |-
+    You might want to ignore the case when querying deterministically encrypted data. There are two options for achieving this - :downcase and :ignore_case.
+
+    When you use the :downcase option when declaring the encrypted attribute, it converts the data to downcase before encryption occurs. This allows to effectively ignore case when querying data.
+
+    When using :downcase, the original case is lost.
+
+    You can use the :ignore_case option when you want to preserve the original case for displaying but ignore the case when querying data:
+
+    With the :ignore_case option, you need to add a new column named original_<column_name> to store the encrypted content with the case unchanged. When reading the name attribute, Rails will serve the version with the original case. When querying name, it will ignore case.
+- anchor: serialized-attributes
+  title: Serialized Attributes
+  parent: Basic Usage
+  body: |-
+    By default, Active Record Encryption will serialize values using the underlying type before encrypting them as long as the value is serializable as Strings. If the underlying type is not serializable as a String, you can use a custom message_serializer:
+
+    Attributes with structured types using the serialized method can be encrypted as well. The serialized method is used when you have an attribute that needs to be saved to the database as a serialized object (using YAML, JSON or such), and retrieved by deserializing into the same object.
+
+    When using serialized attributes for custom types, the declaration of the serialized attribute should go before the encryption declaration:
+- anchor: ensuring-uniqueness-with-encrypted-data
+  title: Ensuring Uniqueness with Encrypted Data
+  parent: Basic Usage
+  body: |-
+    Checking for uniqueness is only supported with deterministically encrypted data.
+
+    Unique Validations
+
+    If an attribute is deterministically encrypted, a uniqueness validation can be specified normally, along with encryption:
+
+    If you want to ignore the case for uniqueness, make sure to use the :downcase or :ignore_case option in the encrypts declaration. Using the :case_sensitive option in the validation won't work.
+
+    If you have a mix of unencrypted and encrypted data or if you have data that is encrypted using two different sets of keys/schemes, you'll need to enable extended queries with config.active_record.encryption.extend_queries = true in order to support unique validations.
+
+    Unique Indexes
+
+    In order to support unique indexes on deterministically encrypted attributes, it’s important to ensure that a given plaintext always produces the same ciphertext. This consistency is what makes indexing and querying possible.
+
+    In order for unique indexes to work, you will have to ensure that the encryption properties for the underlying attributes don't change.
+- anchor: filtering-params-named-as-encrypted-attributes
+  title: Filtering Params Named as Encrypted Attributes
+  parent: Basic Usage
+  body: |-
+    Encrypted attributes are configured to be automatically filtered out of the Rails logs. So sensitive information, like encrypted emails or credit card numbers, isn't stored in your logs. For example, if you are filtering the email field, you will see something like this in the logs: Parameters: {"email"=>"[FILTERED]", ...}.
+
+    In case you need to disable filtering of encrypted parameters, you can use the following configuration:
+
+    When filtering is enabled, if you want to exclude specific attributes from automatic filtering, you can use this configuration:
+
+    When generating the filter parameter, Rails uses the model name as a prefix. For example, for User#email, the filter parameter is user.email.
+- anchor: action-text
+  title: Action Text
+  parent: Basic Usage
+  body: |-
+    You can encrypt Action Text attributes by passing encrypted: true in their declaration.
+
+    Passing individual encryption options to Action Text attributes is not supported. It will use non-deterministic encryption with the global encryption options configured.
+- anchor: fixtures
+  title: Fixtures
+  parent: Basic Usage
+  body: |-
+    To allow your tests can use plain text values in the YAML fixture files for encrypted attributes, you can configure fixtures to be automatically encrypted by adding this configuration to your config/environments/test.rb file:
+
+    Without this setting, Rails would load fixture values as is. This wouldn't work for encrypted attributes and Active Record Encryption expects a JSON value in that column. However, when encrypt_fixtures is enabled, all the encryptable attributes will be automatically encrypted and also seamlessly decrypted, according to the encryption settings defined in the model.
+
+    Action Text Fixtures
+
+    To encrypt Action Text fixtures, you can place them in fixtures/action_text/encrypted_rich_texts.yml.
+- anchor: encoding
+  title: Encoding
+  parent: Basic Usage
+  body: |-
+    When encrypting strings non-deterministically, their original encoding is preserved automatically.
+
+    For deterministic encryption, Rails stores the string encoding alongside the ciphertext. However, to ensure consistent encryption output, especially for querying or enforcing uniqueness, the library forces UTF-8 encoding by default. This avoids producing different ciphertexts for identical strings with different encodings.
+
+    You can customize this behavior. To change the default forced encoding:
+
+    To disable forced encoding and preserve the original encoding in all cases:
+- anchor: compression
+  title: Compression
+  parent: Basic Usage
+  body: |-
+    Active Record Encryption enables compression of encrypted payloads by default. This can save up to 30% of the storage space for larger payloads.
+
+    Compression is enabled by default but not applied to all payloads. It is based on a size threshold (such as 140 bytes), which is used as a heuristic to determine if compression is "worth it".
+
+    You can disable compression by setting the compress option to false when encrypting attributes:
+
+    You can also configure the algorithm used for the compression. The default compressor is Zlib. You can implement your own compressor by creating a class or module that responds to deflate and inflate methods. For example:
+
+    You can also configure the desired compression method globally:
+- anchor: using-the-api
+  title: Using the API
+  parent: Basic Usage
+  body: |-
+    Active Record Encryption is meant to be used declaratively, but there is also an API for debugging or advanced use cases.
+
+    You can encrypt and decrypt all relevant attributes of an article model like this:
+
+    You can check whether a given attribute is encrypted:
+
+    You can read the ciphertext for an attribute:
+- anchor: support-for-unencrypted-data
+  title: Support for Unencrypted Data
+  parent: Migrating Existing Data
+  body: |-
+    To ease the transition from unencrypted to encrypted attributes in your Rails application, you can enable support for unencrypted data with:
+
+    When enabled:
+
+    Reading attributes that are still unencrypted will succeed without raising errors.
+
+    Queries on deterministically encrypted attributes can match both encrypted and cleartext values, if you also enable extended_queries:
+
+    This setup is intended only for migration periods during which both encrypted and unencrypted data need to coexist in your application. Both options default to false, which is the recommended long-term configuration to ensure data is fully encrypted and enforced.
+- anchor: support-for-previous-encryption-schemes
+  title: Support for Previous Encryption Schemes
+  parent: Migrating Existing Data
+  body: |-
+    Changing encryption properties of attributes can break existing data. For example, imagine you want to make a deterministic attribute non-deterministic. If you change the declaration in the model, reading existing ciphertexts will fail because the encryption method is different now.
+
+    To support these situations, you can specify previous encryption schemes to be used globally or on a per-attribute basis.
+
+    Once you configure the previous scheme, the following will be supported:
+
+    When reading encrypted data, Active Record Encryption will try previous encryption schemes if the current scheme doesn't work.
+
+    When querying deterministic data, it will add ciphertexts using previous schemes so that queries work seamlessly with data encrypted with different schemes.
+
+    You need to enable extended_queries configuration for this to work:
+
+    Next, let's see how to configure previous encryption schemes.
+
+    Global Previous Encryption Schemes
+
+    You can add previous encryption schemes by adding them as a list of properties using the previous config property in your config/application.rb:
+
+    Per-attribute Previous Encryption Schemes
+
+    Use the previous option when declaring the encrypted attribute:
+
+    Encryption Schemes and Determinism
+
+    With deterministic encryption, you typically want ciphertexts to remain constant. So when changing encryption schemes, non-deterministic and deterministic encryption behave differently.
+
+    With non-deterministic encryption, new information will always be encrypted with the newest (current) encryption scheme.
+
+    With deterministic encryption, new information will be encrypted with the oldest encryption scheme by default.
+
+    It is possible to change this behavior for deterministic encryption to use the newest encryption scheme for encrypting new data like this:
+- anchor: encryption-contexts
+  title: Encryption Contexts
+  parent:
+  body: |-
+    An encryption context defines the encryption components that are used at a given moment. There is a default encryption context based on your global configuration, but you can also configure a custom context for a given attribute or when running a specific block of code.
+
+    Encryption contexts are a flexible but advanced configuration mechanism. Most users would not need to use them.
+
+    The main components of encryption contexts are:
+
+    encryptor: exposes the internal API for encrypting and decrypting data. It interacts with a key_provider to build encrypted messages and deal with their serialization. The encryption/decryption itself is done by the cipher and the serialization by message_serializer.
+    cipher: the encryption algorithm itself (AES 256 GCM).
+    key_provider: serves encryption and decryption keys.
+    message_serializer: serializes and deserializes encrypted payloads.
+
+    If you decide to build your own message_serializer, it's important to use safe mechanisms that can't deserialize arbitrary objects. A commonly supported scenario is encrypting existing unencrypted data. An attacker can leverage this to enter a tampered payload before encryption takes place and perform RCE attacks. This means custom serializers should avoid Marshal, YAML.load (use YAML.safe_load instead), or JSON.load (use JSON.parse instead).
+- anchor: built-in-encryption-context
+  title: Built-In Encryption Context
+  parent: Encryption Contexts
+  body: |-
+    The global encryption context is the one used by default and is configured with other configuration properties in your config/application.rb or environment config files.
+
+    You can use with_encryption_context to override any of the properties of the encryption context.
+- anchor: encryption-context-with-a-block-of-code
+  title: Encryption Context with a Block of Code
+  parent: Encryption Contexts
+  body: |-
+    You can set an encryption context for a given block of code using with_encryption_context:
+- anchor: per-attribute-encryption-contexts
+  title: Per-attribute Encryption Contexts
+  parent: Encryption Contexts
+  body: |-
+    You can override encryption context configuration by passing options in the attribute declaration:
+- anchor: encryption-context-to-disable-encryption
+  title: Encryption Context to Disable Encryption
+  parent: Encryption Contexts
+  body: |-
+    You can run code without encryption:
+
+    This means that reading encrypted text will return the ciphertext, and saved content will be stored unencrypted.
+- anchor: encryption-context-to-protect-encrypted-data
+  title: Encryption Context to Protect Encrypted Data
+  parent: Encryption Contexts
+  body: |-
+    You can run code in a block without encryption but prevent overwriting encrypted content:
+
+    This can be handy if you want to protect encrypted data while running arbitrary code against it (e.g. in a Rails console).
+- anchor: key-management
+  title: Key Management
+  parent:
+  body: |-
+    Key providers implement key management strategies. You can configure key providers globally or on a per-attribute basis.
+- anchor: built-in-key-providers
+  title: Built-in Key Providers
+  parent: Key Management
+  body: |-
+    DerivedSecretKeyProvider
+
+    The DerivedSecretKeyProvider serves keys derived from the provided passwords using PBKDF2. This is the key provider configured by default.
+
+    By default, active_record.encryption configures a DerivedSecretKeyProvider with the keys defined in active_record.encryption.primary_key.
+
+    EnvelopeEncryptionKeyProvider
+
+    The EnvelopeEncryptionKeyProvider implements a simple envelope encryption strategy, where the data is encrypted with a key, which in turn is also encrypted.
+
+    The EnvelopeEncryptionKeyProvider generates a random key for each data encryption operation. It stores the data-key with the data itself. Then, the data-key is also encrypted with a primary key defined in the credential active_record.encryption.primary_key.
+
+    You can configure Active Record to use this key provider by adding this to your config/application.rb:
+
+    As with other built-in key providers, you can provide a list of primary keys in active_record.encryption.primary_key to implement key-rotation schemes.
+- anchor: custom-key-providers
+  title: Custom Key Providers
+  parent: Key Management
+  body: |-
+    For more advanced key-management schemes, you can configure a custom key provider in an initializer:
+
+    A key provider must implement this interface:
+
+    Both methods return ActiveRecord::Encryption::Key objects:
+
+    encryption_key returns the key used for encrypting some content
+    decryption_keys returns a list of potential keys for decrypting a given ciphertext.
+
+    A key can include arbitrary tags that will be stored unencrypted with the message. You can use ActiveRecord::Encryption::Message#headers to examine those values when decrypting.
+- anchor: attribute-specific-key-providers
+  title: Attribute-specific Key Providers
+  parent: Key Management
+  body: |-
+    You can configure a key provider on a per-attribute basis with the key_provider option. For example, assuming you have defined a custom key provider called ArticleKeyProvider:
+- anchor: attribute-specific-keys
+  title: Attribute-specific Keys
+  parent: Key Management
+  body: |-
+    You can configure a specific key for a given attribute using the key option:
+
+    Active Record will use the key passed to encrypts to encrypt and decrypt the summary attribute above.
+- anchor: rotating-keys
+  title: Rotating Keys
+  parent: Key Management
+  body: |-
+    Active Record Encryption can work with lists of keys to support implementing key rotation schemes. The reason to rotate keys may be as part of your organization's security policy or if you suspect a key may be compromised.
+
+    In the example below, the last key is used for encrypting new content and all keys are tried when decrypting content until one works.
+
+    This enables key rotation workflow where you keep a short list of keys by adding new keys, re-encrypting content, and deleting old keys.
+
+    Rotating keys is not supported for deterministic encryption.
+- anchor: storing-key-references
+  title: Storing Key References
+  parent: Key Management
+  body: |-
+    You can store a reference to the encryption key in the encrypted message itself. The advantage of doing this is that decryption can be more performant as the system does not have to try a list of keys to find one that works. The tradeoff is that the encryption data will be a bit larger.
+
+    In order to store a key reference, you need to enable this configuration:

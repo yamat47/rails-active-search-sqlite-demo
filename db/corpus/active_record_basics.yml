@@ -1,0 +1,244 @@
+---
+slug: active_record_basics
+title: Active Record Basics
+description: Active Record allows your models to interact with the application's database. This guide will get you started with Active Record models and persistence to the database.
+url: https://guides.rubyonrails.org/v8.1/active_record_basics.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/active_record_basics.md
+ref: v8.1.4
+sections:
+- anchor: what-is-active-record-questionmark
+  title: What is Active Record?
+  parent:
+  body: |-
+    Active Record is part of the M in MVC - the model - which is the layer of the system responsible for representing data and business logic. Active Record helps you create and use Ruby objects whose attributes require persistent storage to a database.
+
+    What is the difference between Active Record and Active Model? It's possible to model data with Ruby objects that do not need to be backed by a database. Active Model is commonly used for that in Rails, making Active Record and Active Model both part of the M in MVC, as well as your own plain Ruby objects.
+
+    The term "Active Record" also refers to a software architecture pattern. Active Record in Rails is an implementation of that pattern. It's also a description of something called an Object Relational Mapping system. The below sections explain these terms.
+- anchor: the-active-record-pattern
+  title: The Active Record Pattern
+  parent: What is Active Record?
+  body: |-
+    The Active Record pattern is described by Martin Fowler in the book Patterns of Enterprise Application Architecture as "an object that wraps a row in a database table, encapsulates the database access, and adds domain logic to that data." Active Record objects carry both data and behavior. Active Record classes match very closely to the record structure of the underlying database. This way users can easily read from and write to the database, as you will see in the examples below.
+- anchor: object-relational-mapping
+  title: Object Relational Mapping
+  parent: What is Active Record?
+  body: |-
+    Object Relational Mapping, commonly referred to as ORM, is a technique that connects the rich objects of a programming language to tables in a relational database management system (RDBMS). In the case of a Rails application, these are Ruby objects. Using an ORM, the attributes of Ruby objects, as well as the relationship between objects, can be easily stored and retrieved from a database without writing SQL statements directly. Overall, ORMs minimize the amount of database access code you have to write.
+
+    Basic knowledge of relational database management systems (RDBMS) and structured query language (SQL) is helpful in order to fully understand Active Record. Please refer to this SQL tutorial (or this RDBMS tutorial) or study them by other means if you would like to learn more.
+- anchor: active-record-as-an-orm-framework
+  title: Active Record as an ORM Framework
+  parent: What is Active Record?
+  body: |-
+    Active Record gives us the ability to do the following using Ruby objects:
+
+    Represent models and their data.
+    Represent associations between models.
+    Represent inheritance hierarchies through related models.
+    Validate models before they get persisted to the database.
+    Perform database operations in an object-oriented fashion.
+- anchor: convention-over-configuration-in-active-record
+  title: Convention over Configuration in Active Record
+  parent:
+  body: |-
+    When writing applications using other programming languages or frameworks, it may be necessary to write a lot of configuration code. This is particularly true for ORM frameworks in general. However, if you follow the conventions adopted by Rails, you'll write very little to no configuration code when creating Active Record models.
+
+    Rails adopts the idea that if you configure your applications in the same way most of the time, then that way should be the default. Explicit configuration should be needed only in those cases where you can't follow the convention.
+
+    To take advantage of convention over configuration in Active Record, there are some naming and schema conventions to follow. And in case you need to, it is possible to override naming conventions.
+- anchor: naming-conventions
+  title: Naming Conventions
+  parent: Convention over Configuration in Active Record
+  body: |-
+    Active Record uses this naming convention to map between models (represented by Ruby objects) and database tables:
+
+    Rails will pluralize your model's class names to find the respective database table. For example, a class named Book maps to a database table named books. The Rails pluralization mechanisms are very powerful and capable of pluralizing (and singularizing) both regular and irregular words in the English language. This uses the Active Support pluralize method.
+
+    For class names composed of two or more words, the model class name will follow the Ruby conventions of using an UpperCamelCase name. The database table name, in that case, will be a snake_case name. For example:
+
+    BookClub is the model class, singular with the first letter of each word capitalized.
+    book_clubs is the matching database table, plural with underscores separating words.
+
+    Here are some more examples of model class names and corresponding table names:
+
+    Model / Class Table / Schema
+    Article articles
+    LineItem line_items
+    Product products
+    Person people
+- anchor: schema-conventions
+  title: Schema Conventions
+  parent: Convention over Configuration in Active Record
+  body: |-
+    Active Record uses conventions for column names in the database tables as well, depending on the purpose of these columns.
+
+    Primary keys - By default, Active Record will use an integer column named id as the table's primary key (bigint for PostgreSQL, MySQL, and MariaDB, integer for SQLite). When using Active Record Migrations to create your tables, this column will be automatically created.
+    Foreign keys - These fields should be named following the pattern singularized_table_name_id (e.g., order_id, line_item_id). These are the fields that Active Record will look for when you create associations between your models.
+
+    There are also some optional column names that will add additional features to Active Record instances:
+
+    created_at - Automatically gets set to the current date and time when the record is first created.
+    updated_at - Automatically gets set to the current date and time whenever the record is created or updated.
+    lock_version - Adds optimistic locking to a model.
+    type - Specifies that the model uses Single Table Inheritance.
+    (association_name)_type - Stores the type for polymorphic associations.
+    (table_name)_count - Used to cache the number of belonging objects on associations. For example, if Articles have many Comments, a comments_count column in the articles table will cache the number of existing comments for each article.
+
+    While these column names are optional, they are reserved by Active Record. Steer clear of reserved keywords when naming your table's columns. For example, type is a reserved keyword used to designate a table using Single Table Inheritance (STI). If you are not using STI, use a different word to accurately describe the data you are modeling.
+- anchor: creating-active-record-models
+  title: Creating Active Record Models
+  parent:
+  body: |-
+    When generating a Rails application, an abstract ApplicationRecord class will be created in app/models/application_record.rb. The ApplicationRecord class inherits from ActiveRecord::Base and it's what turns a regular Ruby class into an Active Record model.
+
+    ApplicationRecord is the base class for all Active Record models in your app. To create a new model, subclass the ApplicationRecord class and you're good to go:
+
+    This will create a Book model, mapped to a books table in the database, where each column in the table is mapped to attributes of the Book class. An instance of Book can represent a row in the books table. The books table with columns id, title, and author, can be created using an SQL statement like this:
+
+    However, that is not how you do it normally in Rails. Database tables in Rails are typically created using Active Record Migrations and not raw SQL. A migration for the books table above can be generated like this:
+
+    If you don't specify a type for a field (e.g., title instead of title:string), Rails will default to type string.
+
+    and results in this:
+
+    That migration creates columns id, title, author, created_at and updated_at. Each row of this table can be represented by an instance of the Book class with the same attributes: id, title, author, created_at, and updated_at. You can access a book's attributes like this:
+
+    You can generate the Active Record model class as well as a matching migration with the command bin/rails generate model Book title:string author:string. This creates the files app/models/book.rb, db/migrate/20240220143807_create_books.rb, and a couple others for testing purposes.
+- anchor: creating-namespaced-models
+  title: Creating Namespaced Models
+  parent: Creating Active Record Models
+  body: |-
+    Active Record models are placed under the app/models directory by default. But you may want to organize your models by placing similar models under their own folder and namespace. For example, order.rb and review.rb under app/models/book with Book::Order and Book::Review class names, respectively. You can create namespaced models with Active Record.
+
+    In the case where the Book module does not already exist, the generate command will create everything like this:
+
+    If the Book module already exists, you will be asked to resolve the conflict:
+
+    Once the namespaced model generation is successful, the Book and Order classes look like this:
+
+    Setting the table_name_prefix in Book will allow Order model's database table to be named book_orders, instead of plain orders.
+
+    The other possibility is that you already have a Book model that you want to keep in app/models. In that case, you can choose n to not overwrite book.rb during the generate command.
+
+    This will still allow for a namespaced table name for Book::Order class, without needing the table_name_prefix:
+- anchor: overriding-the-naming-conventions
+  title: Overriding the Naming Conventions
+  parent:
+  body: |-
+    What if you need to follow a different naming convention or need to use your Rails application with a legacy database? No problem, you can easily override the default conventions.
+
+    Since ApplicationRecord inherits from ActiveRecord::Base, your application's models will have a number of helpful methods available to them. For example, you can use the ActiveRecord::Base.table_name= method to customize the table name that should be used:
+
+    If you do so, you will have to manually define the class name that is hosting the fixtures (my_books.yml) using the set_fixture_class method in your test definition:
+
+    It's also possible to override the column that should be used as the table's primary key using the ActiveRecord::Base.primary_key= method:
+
+    Active Record does not recommend using non-primary key columns named id. Using a column named id which is not a single-column primary key complicates the access to the column value. The application will have to use the id_value alias attribute to access the value of the non-PK id column.
+
+    If you try to create a column named id which is not the primary key, Rails will throw an error during migrations such as: you can't redefine the primary key column 'id' on 'my_books'. To define a custom primary key, pass { id: false } to create_table.
+- anchor: crud-reading-and-writing-data
+  title: 'CRUD: Reading and Writing Data'
+  parent:
+  body: |-
+    CRUD is an acronym for the four verbs we use to operate on data: Create, Read, Update, and Delete. Active Record automatically creates methods to allow you to read and manipulate data stored in your application's database tables.
+
+    Active Record makes it seamless to perform CRUD operations by using these high-level methods that abstract away database access details. Note that all of these convenient methods result in SQL statement(s) that are executed against the underlying database.
+
+    The examples below show a few of the CRUD methods as well as the resulting SQL statements.
+- anchor: create
+  title: Create
+  parent: 'CRUD: Reading and Writing Data'
+  body: |-
+    Active Record objects can be created from a hash, a block, or have their attributes manually set after creation. The new method will return a new, non-persisted object, while create will save the object to the database and return it.
+
+    For example, given a Book model with attributes of title and author, the create method call will create an object and save a new record to the database:
+
+    While the new method will instantiate an object without saving it to the database:
+
+    If a block is provided, both create and new will yield the new object to that block for initialization, while only create will persist the resulting object to the database:
+
+    The resulting SQL statement from both book.save and Book.create look something like this:
+
+    Finally, if you'd like to insert several records without callbacks or validations, you can directly insert records into the database using insert or insert_all methods:
+- anchor: read
+  title: Read
+  parent: 'CRUD: Reading and Writing Data'
+  body: |-
+    Active Record provides a rich API for accessing data within a database. You can query a single record or multiple records, filter them by any attribute, order them, group them, select specific fields, and do anything you can do with SQL.
+
+    The above results in the following SQL:
+
+    We can also find specific books with find_by and where. While find_by returns a single record, where returns a list of records:
+
+    The above resulting in this SQL:
+
+    resulting in this SQL:
+
+    There are many more Active Record methods to read and query records. You can learn more about them in the Active Record Query guide.
+- anchor: update
+  title: Update
+  parent: 'CRUD: Reading and Writing Data'
+  body: |-
+    Once an Active Record object has been retrieved, its attributes can be modified and it can be saved to the database.
+
+    A shorthand for this is to use a hash mapping attribute names to the desired value, like so:
+
+    the update results in the following SQL:
+
+    This is useful when updating several attributes at once. Similar to create, using update will commit the updated records to the database.
+
+    If you'd like to update several records in bulk without callbacks or validations, you can update the database directly using update_all:
+- anchor: delete
+  title: Delete
+  parent: 'CRUD: Reading and Writing Data'
+  body: |-
+    Likewise, once retrieved, an Active Record object can be destroyed, which removes it from the database.
+
+    The destroy results in this SQL:
+
+    If you'd like to delete several records in bulk, you may use destroy_by or destroy_all method:
+
+    Additionally, if you'd like to delete several records without callbacks or validations, you can delete records directly from the database using delete and delete_all methods:
+- anchor: validations
+  title: Validations
+  parent:
+  body: |-
+    Active Record allows you to validate the state of a model before it gets written into the database. There are several methods that allow for different types of validations. For example, validate that an attribute value is not empty, is unique, is not already in the database, follows a specific format, and many more.
+
+    Methods like save, create and update validate a model before persisting it to the database. If the model is invalid, no database operations are performed. In this case the save and update methods return false. The create method still returns the object, which can be checked for errors. All of these methods have a bang counterpart (that is, save!, create! and update!), which are stricter in that they raise an ActiveRecord::RecordInvalid exception when validation fails. A quick example to illustrate:
+
+    The create method always returns the model, regardless of its validity. You can then inspect this model for any errors.
+
+    You can learn more about validations in the Active Record Validations guide.
+- anchor: callbacks
+  title: Callbacks
+  parent:
+  body: |-
+    Active Record callbacks allow you to attach code to certain events in the lifecycle of your models. This enables you to add behavior to your models by executing code when those events occur, like when you create a new record, update it, destroy it, and so on.
+
+    You can learn more about callbacks in the Active Record Callbacks guide.
+- anchor: migrations
+  title: Migrations
+  parent:
+  body: |-
+    Rails provides a convenient way to manage changes to a database schema via migrations. Migrations are written in a domain-specific language and stored in files which are executed against any database that Active Record supports.
+
+    Here's a migration that creates a new table called publications:
+
+    Note that the above code is database-agnostic: it will run in MySQL, MariaDB, PostgreSQL, SQLite, and others.
+
+    Rails keeps track of which migrations have been committed to the database and stores them in a neighboring table in that same database called schema_migrations.
+
+    To run the migration and create the table, you'd run bin/rails db:migrate, and to roll it back and delete the table, bin/rails db:rollback.
+
+    You can learn more about migrations in the Active Record Migrations guide.
+- anchor: associations
+  title: Associations
+  parent:
+  body: |-
+    Active Record associations allow you to define relationships between models. Associations can be used to describe one-to-one, one-to-many, and many-to-many relationships. For example, a relationship like “Author has many Books” can be defined as follows:
+
+    The Author class now has methods to add and remove books to an author, and much more.
+
+    You can learn more about associations in the Active Record Associations guide.
