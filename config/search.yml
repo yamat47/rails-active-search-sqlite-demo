@@ -1,0 +1,19 @@
+# Which store each index is written to and searched in. One stanza per environment, or a named
+# store per stanza when an index names one with store_name:.
+#
+# Adapters: elasticsearch, manticore, meilisearch, mysql, opensearch, postgresql, redis_search, solr, sqlite, typesense.
+# A database adapter takes its connection from the document class and reads nothing here beyond
+# the adapter name. Every other adapter defaults to localhost on its own port.
+development:
+  adapter: sqlite
+
+test:
+  adapter: sqlite
+
+production:
+  adapter: sqlite
+
+# The browser build (wasmify-rails) runs the production configuration under this name, on the
+# sqlite3_wasm adapter; the search store is still the application database.
+wasm:
+  adapter: sqlite
