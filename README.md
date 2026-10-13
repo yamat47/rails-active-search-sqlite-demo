@@ -1,9 +1,9 @@
-# Rails Active Search on SQLite FTS5, with Japanese text, in the browser
+# Rails Active Search on SQLite FTS5, searching the Rails Guides in the browser
 
 A demo of [Active Search](https://github.com/basecamp/rails-active_search), the search framework
-37signals announced at Rails World 2026, on its SQLite FTS5 adapter. The same 1,164 paragraphs of
-16 public-domain short stories are indexed three times, each with a different FTS5 tokenizer, and
-one page shows the three result lists side by side for the same query.
+37signals announced at Rails World 2026, on its SQLite FTS5 adapter. The sections of the Rails
+Guides are indexed three times, each with a different FTS5 tokenizer, and one page shows the three
+result lists side by side for the same query.
 
 The page is published at [rails-active-search.yamat47.me](https://rails-active-search.yamat47.me/).
 It is this Rails application compiled to WebAssembly with [wasmify-rails](https://github.com/palkan/wasmify-rails)
@@ -12,29 +12,34 @@ all run inside your browser.
 
 ## What it shows
 
-Japanese is written without spaces, so FTS5's default tokenizer, which splits on spaces and
-punctuation, sees a whole clause as one token. The three indexes differ in one line of their
-migration (and, for the third, in what is written to it):
+The three indexes differ in one line of their migration, the FTS5 tokenizer, which is the one
+knob the Active Search README points at for SQLite ("`company` does not find `companies`"):
 
-| Column | Migration (db/migrate) | Query of 2 chars (ごん) | Word inside a sentence (ゴーシュ) | Word the splitter cuts differently (料理店) |
-| --- | --- | ---: | ---: | ---: |
-| unicode61, as generated | `create_virtual_table :paragraph_documents_fts, :fts5, [ "body" ]` | 1 | 0 | 0 |
-| trigram | `create_virtual_table :trigram_paragraph_documents_fts, :fts5, [ "body", "tokenize='trigram'" ]` | 0 | 67 | 3 |
-| words + unicode61 | the generated line, over text split by [TinySegmenter](lib/tiny_segmenter.rb) | 37 | 67 | 0 |
+| Column | Migration (db/migrate) | What a query matches |
+| --- | --- | --- |
+| unicode61, as generated | `create_virtual_table :section_documents_fts, :fts5, [ "title", "body" ]` | the word as written; `callback` is not `callbacks`, and `has_many` is the two words `has` and `many` |
+| porter | `create_virtual_table :porter_section_documents_fts, :fts5, [ "title", "body", "tokenize='porter'" ]` | the stem; `validate`, `validation` and `validations` are one token, and so are a few words that only look alike |
+| trigram | `create_virtual_table :trigram_section_documents_fts, :fts5, [ "title", "body", "tokenize='trigram'" ]` | any three or more characters, inside words too; `deprecat` and `find_b` match, `ca` matches nothing |
 
-- **unicode61** finds `ごん` only where it stands alone (`「ごん、お前だったのか。」`) and `ゴーシュ` never, because the name is always glued to a particle.
-- **trigram** matches any three or more characters anywhere, so it is the one-line fix for Japanese, but a two-character query such as `ごん`, `檸檬` or `手袋` matches nothing at all.
-- **words + unicode61** finds short words and keeps bm25 ranking meaningful, at the price of agreeing with the splitter: TinySegmenter reads `西洋料理店` as one word, so the query `料理店` finds nothing, and `泣いた` becomes `泣い` + `た` and matches more than it should.
+Over the 1,505 sections of the 48 guides, for example:
+
+| Query | unicode61 | porter | trigram | Why |
+| --- | ---: | ---: | ---: | --- |
+| `callbacks` | 67 | 85 | 67 | porter also finds the sections that only say "callback" |
+| `validate` | 36 | 131 | 57 | porter stems it to `valid`, as it does `validation`, `validations` and `valid` |
+| `deprecat` | 0 | 0 | 34 | not a word, so only a substring match can find `deprecated` and `deprecation` |
+| `has_many` | 35 | 35 | 29 | unicode61 and porter read it as the phrase `has many`, which prose contains too |
+| `N+1` | 12 | 12 | 5 | the same, with `n` and `1` |
 
 Each column also prints the FTS5 tokens of the query (through a temporary FTS5 table and
-`fts5vocab`), which is usually where the explanation is.
+`fts5vocab`), which is usually where the explanation is, and every hit links to its section on
+guides.rubyonrails.org.
 
 ## How it is built
 
-- `config/search.rb` declares the three indexes over `Paragraph`; `app/models/paragraph.rb` connects them with `has_search index:`, inline rather than through Active Job so a seed run or a test sees the index at once. The third index gets its text from a serializer that runs the body through TinySegmenter, and `SearchStrategy` runs the query through the same split.
-- `rails generate active_search:document` wrote the three document classes and migrations; the only hand edit is the `tokenize='trigram'` option. Active Search quotes non-ASCII terms as phrases, which is what makes the trigram index match a Japanese query as a substring.
-- `lib/tiny_segmenter.rb` is a port of Taku Kudo's TinySegmenter (BSD), a character-level model with no dictionary and no native extension, so it runs under ruby.wasm. MeCab would segment better; it would not run in the browser.
-- `db/corpus/` holds the texts, cleaned from [Aozora Bunko](https://www.aozora.gr.jp/) with their colophons kept (see [its README](db/corpus/README.md)); `db/seeds.rb` loads and indexes them in batches.
+- `config/search.rb` declares the three indexes over `Section`; `app/models/section.rb` connects them with `has_search index:`, inline rather than through Active Job so a seed run or a test sees the index at once. `SearchStrategy` runs one query against all three.
+- `rails generate active_search:document` wrote the three document classes and migrations; the only hand edit is the `tokenize=` option in two of them.
+- `db/corpus/` holds the guides split into sections, one YAML file per guide, fetched from rails/rails at the tag the application runs on (see [its README](db/corpus/README.md) for the split and the licence); `db/seeds.rb` loads and indexes them in batches.
 - In the browser, wasmify-rails runs the application in a Service Worker on ruby.wasm and talks to the official [sqlite-wasm](https://sqlite.org/wasm) build through its `sqlite3_wasm` Active Record adapter. The database is not seeded in the browser: CI builds it with the native `sqlite3` gem and ships the file, which `pwa/database.js` fetches into sqlite-wasm at start. `config/environments/wasm.rb` is the production configuration with Active Job inline, which is all Active Search needs.
 
 ## Development
@@ -54,8 +59,8 @@ make wasm-verify    # boot the compiled Rails app under wasmtime
 
 `make wasm` compiles CRuby to WebAssembly the first time, which takes a while; a Docker volume
 keeps the `build/` directory for later runs. The compiled application is about 84 MB, 24 MB over
-the wire, plus a 3 MB database; `pwa/smoke.mjs` boots the built site in headless Chromium and
-runs a search through it, which CI does before every deploy.
+the wire, plus the database; `pwa/smoke.mjs` boots the built site in headless Chromium and runs a
+search through it, which CI does before every deploy.
 
 The page is built and released to GitHub Pages by GitHub Actions when `main` is updated. The
 actions and the agent skills under `.claude/skills/` come from [yamat47/github-toolkit](https://github.com/yamat47/github-toolkit).
@@ -63,5 +68,6 @@ actions and the agent skills under `.claude/skills/` come from [yamat47/github-t
 ## Notes
 
 - Active Search is alpha software (`rails-active_search` 0.1.0, `rails >= 8.1`); its API may change. This repository pins `~> 0.1` and lets Dependabot propose the bumps.
-- sqlite-wasm ships FTS5 with the unicode61, porter and trigram tokenizers and no ICU, so the three strategies here are what is available in the browser as well as on a server with the `sqlite3` gem.
-- FTS5's bm25 rank is negative, and Active Search sorts SQLite results ascending (best first). On a corpus this small the IDF term rounds to zero for common words, so several hits can share a rank of 0.
+- Active Search has no query syntax of its own: it passes a plain word through, quotes anything else as a phrase, and hands the result to FTS5. So `has_many` reaches FTS5 as one bareword, which unicode61 then splits into the phrase `has many`, and `N+1` reaches it as the phrase `"N+1"`, which each tokenizer splits its own way.
+- FTS5's bm25 rank is negative, and Active Search sorts SQLite results ascending (best first).
+- The Rails Guides are © the Rails contributors, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
