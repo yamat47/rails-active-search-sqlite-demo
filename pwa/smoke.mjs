@@ -8,7 +8,10 @@ const port = process.env.PORT || 4173;
 const origin = `http://localhost:${port}`;
 const bootTimeout = Number(process.env.BOOT_TIMEOUT_MS || 180_000);
 
-const preview = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], { stdio: ["ignore", "pipe", "inherit"] });
+// Vite is started as a direct child rather than through npx, so that killing it at the end kills
+// the server and not just a wrapper that leaves it (and this process) alive.
+const vite = new URL("node_modules/.bin/vite", import.meta.url).pathname;
+const preview = spawn(vite, ["preview", "--port", String(port), "--strictPort"], { stdio: ["ignore", "pipe", "inherit"] });
 preview.stdout.on("data", (chunk) => process.stdout.write(`[vite] ${chunk}`));
 
 const waitFor = async (url, attempts = 50) => {
@@ -33,9 +36,7 @@ try {
   browser = await chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
-  page.on("console", (message) => {
-    if (message.type() === "error") console.log(`[browser:error] ${message.text()}`);
-  });
+  page.on("console", (message) => console.log(`[browser:${message.type()}] ${message.text()}`));
 
   console.log("Opening the launcher...");
   await page.goto(`${origin}/boot.html`);
@@ -61,4 +62,6 @@ try {
 } finally {
   await browser?.close();
   preview.kill();
+  // Whatever is still open (the preview server's pipe, a worker Chromium left), the verdict is in.
+  process.exit(process.exitCode || 0);
 }
