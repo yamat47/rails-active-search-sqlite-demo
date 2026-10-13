@@ -45,20 +45,30 @@ try {
   await page.waitForSelector(".search-form", { timeout: 60_000 });
   console.log("Rails answered /.");
 
-  await page.goto(`${origin}/?q=${encodeURIComponent("ごん")}`);
-  await page.waitForSelector("#strategy-segmented .hit", { timeout: 60_000 });
+  await page.goto(`${origin}/?q=callbacks`);
+  await page.waitForSelector("#strategy-trigram .hit", { timeout: 60_000 });
   const counts = await page.$$eval(".column-count", (nodes) => nodes.map((node) => node.textContent.trim()));
-  console.log(`Counts for ごん: ${JSON.stringify(counts)}`);
+  console.log(`Counts for callbacks: ${JSON.stringify(counts)}`);
   if (counts.length !== 3) fail(`expected three columns, got ${counts.length}`);
-  if (!counts[1].startsWith("0 hits")) fail(`trigram should have no hits for ごん, got "${counts[1]}"`);
-  if (!counts[2].match(/^\d{2,} hits/)) fail(`segmented should have many hits for ごん, got "${counts[2]}"`);
+  const hits = counts.map((count) => Number.parseInt(count, 10));
+  if (!hits.every((count) => count > 0)) fail(`expected hits in every column, got ${JSON.stringify(hits)}`);
+  if (hits[1] < hits[0]) fail(`porter should find at least what unicode61 finds, got ${JSON.stringify(hits)}`);
 
-  const marks = await page.$$eval("#strategy-segmented mark", (nodes) => nodes.map((node) => node.textContent));
-  if (!marks.includes("ごん")) fail(`expected a highlighted ごん, got ${JSON.stringify(marks.slice(0, 5))}`);
+  const marks = await page.$$eval("#strategy-porter mark", (nodes) => nodes.map((node) => node.textContent.toLowerCase()));
+  if (!marks.some((mark) => mark.startsWith("callback"))) fail(`expected a highlighted callback, got ${JSON.stringify(marks.slice(0, 5))}`);
 
   console.log(process.exitCode ? "Smoke test failed." : "Smoke test passed.");
 } catch (error) {
   fail(error.stack || String(error));
+  // The worker's own console is not visible from the page, but the launcher mirrors its progress
+  // and output into the DOM, which is the best account of a boot that did not finish.
+  const page = browser && (await browser.contexts()[0]?.pages()[0]);
+  if (page) {
+    for (const id of ["boot-message", "boot-console-output"]) {
+      const text = await page.$eval(`#${id}`, (node) => node.textContent).catch(() => null);
+      if (text) console.log(`[launcher ${id}] ${text.trim().slice(-2000)}`);
+    }
+  }
 } finally {
   await browser?.close();
   preview.kill();
