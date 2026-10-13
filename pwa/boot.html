@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rails Active Search on SQLite FTS5 — starting</title>
+    <meta name="description" content="Rails Active Search on SQLite FTS5 with Japanese text, running in the browser on ruby.wasm.">
+    <script type="module" src="/boot.js"></script>
+    <style>
+      :root { color-scheme: light dark; --fg: #1f1f1f; --bg: #fbfaf7; --muted: #6b6b6b; --line: #e2ded5; --accent: #b23a48; }
+      @media (prefers-color-scheme: dark) { :root { --fg: #ececec; --bg: #17181a; --muted: #a0a0a0; --line: #34363a; --accent: #ff8a96; } }
+      body { margin: 0; padding: 0 16px; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", sans-serif; line-height: 1.6; }
+      main { max-width: 720px; margin: 48px auto; }
+      h1 { font-size: 1.5rem; margin: 0 0 8px; }
+      p { margin: 0 0 12px; }
+      .muted { color: var(--muted); }
+      progress { width: 100%; height: 10px; }
+      #boot-message { min-height: 1.6em; }
+      #boot-console-output { margin-top: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; white-space: pre-wrap; max-height: 240px; overflow-y: auto; }
+      button { font: inherit; padding: 4px 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Rails Active Search on SQLite FTS5</h1>
+      <p>
+        Starting a Rails application inside your browser. The first visit downloads about 30 MB
+        (a Ruby interpreter with Rails, Active Search and the demo texts), compiles it, and boots
+        Rails; later visits start from the browser cache.
+      </p>
+      <p id="boot-message" aria-live="polite">Checking for a Service Worker...</p>
+      <progress id="boot-progress" max="100" value="0"></progress>
+      <pre id="boot-console-output" aria-label="Boot log"></pre>
+      <p class="muted">
+        Stuck? <button id="reset-button" type="button">Reset</button> removes the Service Worker and starts over.
+        Source and notes on <a href="https://github.com/yamat47/rails-active-search-sqlite-demo">GitHub</a>.
+      </p>
+    </main>
+  </body>
+</html>
