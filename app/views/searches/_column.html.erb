@@ -1,0 +1,36 @@
+<section class="column" id="strategy-<%= column.strategy.key %>">
+  <header class="column-header">
+    <h2><%= column.strategy.title %></h2>
+    <p class="column-summary"><%= column.strategy.summary %></p>
+    <pre class="migration"><code><%= column.strategy.migration_line %></code></pre>
+    <p class="tokens">
+      <span class="tokens-label">Query as FTS5 tokens:</span>
+      <% tokens = column.tokens %>
+      <% if tokens.empty? %>
+        <em>none</em>
+      <% else %>
+        <% tokens.each do |token| %><span class="token"><%= token %></span><% end %>
+      <% end %>
+    </p>
+  </header>
+
+  <% if column.error %>
+    <p class="column-error"><%= column.error %></p>
+  <% elsif column.results.total.zero? %>
+    <p class="column-count">0 hits</p>
+  <% else %>
+    <p class="column-count"><%= pluralize number_with_delimiter(column.results.total), "hit" %><%= ", showing the first #{column.results.size}" if column.results.total > column.results.size %></p>
+    <ol class="hits">
+      <% column.results.each do |paragraph| %>
+        <li class="hit">
+          <p class="hit-body"><%= column.strategy.display_highlight(paragraph.hit.highlight(:body)) || paragraph.body %></p>
+          <p class="hit-meta">
+            <%= link_to paragraph.work.title, work_path(paragraph.work, anchor: "p#{paragraph.position}") %>
+            <span class="hit-author"><%= paragraph.author %></span>
+            <span class="hit-score" title="FTS5 bm25 rank, lower is better">rank <%= number_with_precision paragraph.hit.score, precision: 3 %></span>
+          </p>
+        </li>
+      <% end %>
+    </ol>
+  <% end %>
+</section>
