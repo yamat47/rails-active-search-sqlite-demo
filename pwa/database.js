@@ -15,7 +15,7 @@ export const setupSQLiteDatabase = async () => {
 
   const db = new sqlite3.oo1.DB("/demo.sqlite3", "c");
   console.log(
-    `SQLite ${sqlite3.version.libVersion}: ${db.selectValue("SELECT count(*) FROM paragraphs")} paragraphs loaded`,
+    `SQLite ${sqlite3.version.libVersion}: ${db.selectValue("SELECT count(*) FROM sections")} sections loaded`,
   );
   return db;
 };

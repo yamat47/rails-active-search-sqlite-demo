@@ -1,0 +1,2 @@
+class SectionDocument < ApplicationRecord
+end

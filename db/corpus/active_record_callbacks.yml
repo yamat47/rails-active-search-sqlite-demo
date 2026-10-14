@@ -1,0 +1,395 @@
+---
+slug: active_record_callbacks
+title: Active Record Callbacks
+description: Callbacks make it possible to write code that will run whenever an object is created, updated, destroyed, etc. This guide teaches you how to hook into this object life cycle of Active Record objects.
+url: https://guides.rubyonrails.org/v8.1/active_record_callbacks.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/active_record_callbacks.md
+ref: v8.1.4
+sections:
+- anchor: the-object-life-cycle
+  title: The Object Life Cycle
+  parent:
+  body: |-
+    During the normal operation of a Rails application, objects may be created, updated, and destroyed. Active Record provides hooks into this object life cycle so that you can control your application and its data.
+
+    Callbacks allow you to trigger logic before or after a change to an object's state. They are methods that get called at certain moments of an object's life cycle. With callbacks it is possible to write code that will run whenever an Active Record object is initialized, created, saved, updated, deleted, validated, or loaded from the database.
+
+    As you will see, there are many life cycle events and multiple options to hook into these — either before, after, or even around them.
+- anchor: callback-registration
+  title: Callback Registration
+  parent:
+  body: |-
+    To use the available callbacks, you need to implement and register them. Implementation can be done in a multitude of ways like using ordinary methods, blocks and procs, or defining custom callback objects using classes or modules. Let's go through each of these implementation techniques.
+
+    You can register the callbacks with a macro-style class method that calls an ordinary method for implementation.
+
+    The macro-style class methods can also receive a block. Consider using this style if the code inside your block is so short that it fits in a single line:
+
+    Alternatively, you can pass a proc to the callback to be triggered.
+
+    Lastly, you can define a custom callback object, as shown below. We will cover these later in more detail.
+- anchor: registering-callbacks-to-fire-on-life-cycle-events
+  title: Registering Callbacks to Fire on Life Cycle Events
+  parent: Callback Registration
+  body: |-
+    Callbacks can also be registered to only fire on certain life cycle events, this can be done using the :on option and allows complete control over when and in what context your callbacks are triggered.
+
+    A context is like a category or a scenario in which you want certain validations to apply. When you validate an ActiveRecord model, you can specify a context to group validations. This allows you to have different sets of validations that apply in different situations. In Rails, there are certain default contexts for validations like :create, :update, and :save.
+
+    It is considered good practice to declare callback methods as private. If left public, they can be called from outside of the model and violate the principle of object encapsulation.
+
+    Refrain from using methods like update, save, or any other methods that cause side effects on the object within your callback methods. For instance, avoid calling update(attribute: "value") inside a callback. This practice can modify the model's state and potentially lead to unforeseen side effects during commit. Instead, you can assign values directly (e.g., self.attribute = "value") in before_create, before_update, or earlier callbacks for a safer approach.
+- anchor: available-callbacks
+  title: Available Callbacks
+  parent:
+  body: |-
+    Here is a list with all the available Active Record callbacks, listed in the order in which they will get called during the respective operations:
+- anchor: creating-an-object
+  title: Creating an Object
+  parent: Available Callbacks
+  body: |-
+    before_validation
+    after_validation
+    before_save
+    around_save
+    before_create
+    around_create
+    after_create
+    after_save
+    after_commit / after_rollback
+
+    See the after_commit / after_rollback section for examples using these two callbacks.
+
+    There are examples below that show how to use these callbacks. We've grouped them by the operation they are associated with, and lastly show how they can be used in combination.
+
+    Validation Callbacks
+
+    Validation callbacks are triggered whenever the record is validated directly via the valid? ( or its alias validate) or invalid? method, or indirectly via create, update, or save. They are called before and after the validation phase.
+
+    Save Callbacks
+
+    Save callbacks are triggered whenever the record is persisted (i.e. "saved") to the underlying database, via the create, update, or save methods. They are called before, after, and around the object is saved.
+
+    Create Callbacks
+
+    Create callbacks are triggered whenever the record is persisted (i.e. "saved") to the underlying database for the first time — in other words, when we're saving a new record, via the create or save methods. They are called before, after and around the object is created.
+- anchor: updating-an-object
+  title: Updating an Object
+  parent: Available Callbacks
+  body: |-
+    Update callbacks are triggered whenever an existing record is persisted (i.e. "saved") to the underlying database. They are called before, after and around the object is updated.
+
+    before_validation
+    after_validation
+    before_save
+    around_save
+    before_update
+    around_update
+    after_update
+    after_save
+    after_commit / after_rollback
+
+    The after_save callback is triggered on both create and update operations. However, it consistently executes after the more specific callbacks after_create and after_update, regardless of the sequence in which the macro calls were made. Similarly, before and around save callbacks follow the same rule: before_save runs before create/update, and around_save runs around create/update operations. It's important to note that save callbacks will always run before/around/after the more specific create/update callbacks.
+
+    We've already covered validation and save callbacks. See the after_commit / after_rollback section for examples using these two callbacks.
+
+    Update Callbacks
+
+    Using a Combination of Callbacks
+
+    Often, you will need to use a combination of callbacks to achieve the desired behavior. For example, you may want to send a confirmation email after a user is created, but only if the user is new and not being updated. When a user is updated, you may want to notify an admin if critical information is changed. In this case, you can use after_create and after_update callbacks together.
+- anchor: destroying-an-object
+  title: Destroying an Object
+  parent: Available Callbacks
+  body: |-
+    Destroy callbacks are triggered whenever a record is destroyed, but ignored when a record is deleted. They are called before, after and around the object is destroyed.
+
+    before_destroy
+    around_destroy
+    after_destroy
+    after_commit / after_rollback
+
+    Find examples for using after_commit / after_rollback.
+
+    Destroy Callbacks
+- anchor: after-initialize-and-after-find
+  title: after_initialize and after_find
+  parent: Available Callbacks
+  body: |-
+    Whenever an Active Record object is instantiated, either by directly using new or when a record is loaded from the database, the after_initialize callback will be called. It can be useful to avoid the need to directly override your Active Record initialize method.
+
+    When loading a record from the database the after_find callback will be called. after_find is called before after_initialize if both are defined.
+
+    The after_initialize and after_find callbacks have no before_* counterparts.
+
+    They can be registered just like the other Active Record callbacks.
+- anchor: after-touch
+  title: after_touch
+  parent: Available Callbacks
+  body: |-
+    The after_touch callback will be called whenever an Active Record object is touched. You can read more about touch in the API docs.
+
+    It can be used along with belongs_to:
+- anchor: running-callbacks
+  title: Running Callbacks
+  parent:
+  body: |-
+    The following methods trigger callbacks:
+
+    create
+    create!
+    destroy
+    destroy!
+    destroy_all
+    destroy_by
+    save
+    save!
+    save(validate: false)
+    save!(validate: false)
+    toggle!
+    touch
+    update_attribute
+    update_attribute!
+    update
+    update!
+    valid?
+    validate
+
+    Additionally, the after_find callback is triggered by the following finder methods:
+
+    all
+    first
+    find
+    find_by
+    find_by!
+    find_by_*
+    find_by_*!
+    find_by_sql
+    last
+    sole
+    take
+
+    The after_initialize callback is triggered every time a new object of the class is initialized.
+
+    The find_by_* and find_by_*! methods are dynamic finders generated automatically for every attribute. Learn more about them in the Dynamic finders section.
+- anchor: conditional-callbacks
+  title: Conditional Callbacks
+  parent:
+  body: |-
+    As with validations, we can also make the calling of a callback method conditional on the satisfaction of a given predicate. We can do this using the :if and :unless options, which can take a symbol, a Proc or an Array.
+
+    You may use the :if option when you want to specify under which conditions the callback should be called. If you want to specify the conditions under which the callback should not be called, then you may use the :unless option.
+- anchor: using-if-and-unless-with-a-symbol
+  title: Using :if and :unless with a Symbol
+  parent: Conditional Callbacks
+  body: |-
+    You can associate the :if and :unless options with a symbol corresponding to the name of a predicate method that will get called right before the callback.
+
+    When using the :if option, the callback won't be executed if the predicate method returns false; when using the :unless option, the callback won't be executed if the predicate method returns true. This is the most common option.
+
+    Using this form of registration it is also possible to register several different predicates that should be called to check if the callback should be executed. We will cover this in the Multiple Callback Conditions section.
+- anchor: using-if-and-unless-with-a-proc
+  title: Using :if and :unless with a Proc
+  parent: Conditional Callbacks
+  body: |-
+    It is possible to associate :if and :unless with a Proc object. This option is best suited when writing short validation methods, usually one-liners:
+
+    Since the proc is evaluated in the context of the object, it is also possible to write this as:
+- anchor: multiple-callback-conditions
+  title: Multiple Callback Conditions
+  parent: Conditional Callbacks
+  body: |-
+    The :if and :unless options also accept an array of procs or method names as symbols:
+
+    You can easily include a proc in the list of conditions:
+- anchor: using-both-if-and-unless
+  title: Using Both :if and :unless
+  parent: Conditional Callbacks
+  body: |-
+    Callbacks can mix both :if and :unless in the same declaration:
+
+    The callback only runs when all the :if conditions and none of the :unless conditions are evaluated to true.
+- anchor: skipping-callbacks
+  title: Skipping Callbacks
+  parent:
+  body: |-
+    Just as with validations, it is also possible to skip callbacks by using the following methods:
+
+    decrement!
+    decrement_counter
+    delete
+    delete_all
+    delete_by
+    increment!
+    increment_counter
+    insert
+    insert!
+    insert_all
+    insert_all!
+    touch_all
+    update_column
+    update_columns
+    update_all
+    update_counters
+    upsert
+    upsert_all
+
+    Let's consider a User model where the before_save callback logs any changes to the user's email address:
+
+    Now, suppose there's a scenario where you want to update the user's email address without triggering the before_save callback to log the email change. You can use the update_columns method for this purpose:
+
+    The above will update the user's email address without triggering the before_save callback.
+
+    These methods should be used with caution because there may be important business rules and application logic in callbacks that you do not want to bypass. Bypassing them without understanding the potential implications may lead to invalid data.
+- anchor: suppressing-saving
+  title: Suppressing Saving
+  parent:
+  body: |-
+    In certain scenarios, you may need to temporarily prevent records from being saved within your callbacks. This can be useful if you have a record with complex nested associations and want to skip saving specific records during certain operations without permanently disabling the callbacks or introducing complex conditional logic.
+
+    Rails provides a mechanism to prevent saving records using the ActiveRecord::Suppressor module. By using this module, you can wrap a block of code where you want to avoid saving records of a specific type that otherwise would be saved by the code block.
+
+    Let's consider a scenario where a user has many notifications. Creating a User will automatically create a Notification record as well.
+
+    To create a user without creating a notification, we can use the ActiveRecord::Suppressor module as follows:
+
+    In the above code, the Notification.suppress block ensures that the Notification is not saved during the creation of the "Jane" user.
+
+    Using the Active Record Suppressor can introduce complexity and unexpected behavior. Suppressing saving can obscure the intended flow of your application, leading to difficulties in understanding and maintaining the codebase over time. Carefully consider the implications of using the suppressor, ensuring thorough documentation and thoughtful testing to mitigate risks of unintended side effects and test failures.
+- anchor: halting-execution
+  title: Halting Execution
+  parent:
+  body: |-
+    As you start registering new callbacks for your models, they will be queued for execution. This queue will include all of your model's validations, the registered callbacks, and the database operation to be executed.
+
+    The whole callback chain is wrapped in a transaction. If any callback raises an exception, the execution chain gets halted and a rollback is issued, and the error will be re-raised.
+
+    This unexpectedly breaks code that does not expect methods like create and save to raise exceptions.
+
+    If an exception occurs during the callback chain, Rails will re-raise it unless it is an ActiveRecord::Rollback or ActiveRecord::RecordInvalid exception. Instead, you should use throw :abort to intentionally halt the chain. If any callback throws :abort, the process will be aborted and create will return false.
+
+    However, it will raise an ActiveRecord::RecordNotSaved when calling create!. This exception indicates that the record was not saved due to the callback's interruption.
+
+    When throw :abort is called in any destroy callback, destroy will return false:
+
+    However, it will raise an ActiveRecord::RecordNotDestroyed when calling destroy!.
+- anchor: association-callbacks
+  title: Association Callbacks
+  parent:
+  body: |-
+    Association callbacks are similar to normal callbacks, but they are triggered by events in the life cycle of the associated collection. There are four available association callbacks:
+
+    before_add
+    after_add
+    before_remove
+    after_remove
+
+    You can define association callbacks by adding options to the association.
+
+    Suppose you have an example where an author can have many books. However, before adding a book to the authors collection, you want to ensure that the author has not reached their book limit. You can do this by adding a before_add callback to check the limit.
+
+    If a before_add callback throws :abort, the object does not get added to the collection.
+
+    At times you may want to perform multiple actions on the associated object. In this case, you can stack callbacks on a single event by passing them as an array. Additionally, Rails passes the object being added or removed to the callback for you to use.
+
+    Similarly, if a before_remove callback throws :abort, the object does not get removed from the collection.
+
+    These callbacks are called only when the associated objects are added or removed through the association collection.
+- anchor: cascading-association-callbacks
+  title: Cascading Association Callbacks
+  parent:
+  body: |-
+    Callbacks can be performed when associated objects are changed. They work through the model associations whereby life cycle events can cascade on associations and fire callbacks.
+
+    Suppose an example where a user has many articles. A user's articles should be destroyed if the user is destroyed. Let's add an after_destroy callback to the User model by way of its association to the Article model:
+
+    When using a before_destroy callback, it should be placed before dependent: :destroy associations (or use the prepend: true option), to ensure they execute before the records are deleted by dependent: :destroy.
+- anchor: after-commit-and-after-rollback
+  title: after_commit and after_rollback
+  parent: Transaction Callbacks
+  body: |-
+    Two additional callbacks are triggered by the completion of a database transaction: after_commit and after_rollback. These callbacks are very similar to the after_save callback except that they don't execute until after database changes have either been committed or rolled back. They are most useful when your Active Record models need to interact with external systems that are not part of the database transaction.
+
+    Consider a PictureFile model that needs to delete a file after the corresponding record is destroyed.
+
+    If anything raises an exception after the after_destroy callback is called and the transaction rolls back, then the file will have been deleted and the model will be left in an inconsistent state. For example, suppose that picture_file_2 in the code below is not valid and the save! method raises an error.
+
+    By using the after_commit callback we can account for this case.
+
+    The :on option specifies when a callback will be fired. If you don't supply the :on option the callback will fire for every life cycle event. Read more about :on.
+
+    When a transaction completes, the after_commit or after_rollback callbacks are called for all models created, updated, or destroyed within that transaction. However, if an exception is raised within one of these callbacks, the exception will bubble up and any remaining after_commit or after_rollback methods will not be executed.
+
+    If your callback code raises an exception, you'll need to rescue it and handle it within the callback in order to allow other callbacks to run.
+
+    after_commit makes very different guarantees than after_save, after_update, and after_destroy. For example, if an exception occurs in an after_save the transaction will be rolled back and the data will not be persisted.
+
+    However, during after_commit the data was already persisted to the database, and thus any exception won't roll anything back anymore.
+
+    The code executed within after_commit or after_rollback callbacks is itself not enclosed within a transaction.
+
+    In the context of a single transaction, if you represent the same record in the database, there's a crucial behavior in the after_commit and after_rollback callbacks to note. These callbacks are triggered only for the first object of the specific record that changes within the transaction. Other loaded objects, despite representing the same database record, will not have their respective after_commit or after_rollback callbacks triggered.
+
+    This nuanced behavior is particularly impactful in scenarios where you expect independent callback execution for each object associated with the same database record. It can influence the flow and predictability of callback sequences, leading to potential inconsistencies in application logic following the transaction.
+- anchor: aliases-for-after-commit
+  title: Aliases for after_commit
+  parent: Transaction Callbacks
+  body: |-
+    Using the after_commit callback only on create, update, or destroy is common. Sometimes you may also want to use a single callback for both create and update. Here are some common aliases for these operations:
+
+    after_destroy_commit
+    after_create_commit
+    after_update_commit
+    after_save_commit
+
+    Let's go through some examples:
+
+    Instead of using after_commit with the on option for a destroy like below:
+
+    You can instead use the after_destroy_commit.
+
+    The same applies for after_create_commit and after_update_commit.
+
+    However, if you use the after_create_commit and the after_update_commit callback with the same method name, it will only allow the last callback defined to take effect, as they both internally alias to after_commit which overrides previously defined callbacks with the same method name.
+
+    In this case, it's better to use after_save_commit instead which is an alias for using the after_commit callback for both create and update:
+- anchor: transactional-callback-ordering
+  title: Transactional Callback Ordering
+  parent: Transaction Callbacks
+  body: |-
+    By default (from Rails 7.1), transaction callbacks will run in the order they are defined.
+
+    However, in prior versions of Rails, when defining multiple transactional after_ callbacks (after_commit, after_rollback, etc), the order in which the callbacks were run was reversed.
+
+    If for some reason you'd still like them to run in reverse, you can set the following configuration to false. The callbacks will then run in the reverse order. See the Active Record configuration options for more details.
+
+    This applies to all after_*_commit variations too, such as after_destroy_commit.
+- anchor: per-transaction-callback
+  title: Per transaction callback
+  parent: Transaction Callbacks
+  body: |-
+    You can also register transactional callbacks such as before_commit, after_commit and after_rollback on a specific transaction. This is handy in situations where you need to perform an action that isn't specific to a model but rather a unit of work.
+
+    ActiveRecord::Base.transaction yields an ActiveRecord::Transaction object, which allows registering the said callbacks on it.
+- anchor: activerecord-after-all-transactions-commit
+  title: ActiveRecord.after_all_transactions_commit
+  parent: Transaction Callbacks
+  body: |-
+    ActiveRecord.after_all_transactions_commit is a callback that allows you to run code after all the current transactions have been successfully committed to the database.
+
+    A callback registered to after_all_transactions_commit will be triggered after the outermost transaction is committed. If any of the currently open transactions is rolled back, the block is never called. In the event that there are no open transactions at the time a callback is registered, the block will be yielded immediately.
+- anchor: callback-objects
+  title: Callback Objects
+  parent:
+  body: |-
+    Sometimes the callback methods that you'll write will be useful enough to be reused by other models. Active Record makes it possible to create classes that encapsulate the callback methods, so they can be reused.
+
+    Here's an example of an after_commit callback class to deal with the cleanup of discarded files on the filesystem. This behavior may not be unique to our PictureFile model and we may want to share it, so it's a good idea to encapsulate this into a separate class. This will make testing that behavior and changing it much easier.
+
+    When declared inside a class, as above, the callback methods will receive the model object as a parameter. This will work on any model that uses the class like so:
+
+    Note that we needed to instantiate a new FileDestroyerCallback object, since we declared our callback as an instance method. This is particularly useful if the callbacks make use of the state of the instantiated object. Often, however, it will make more sense to declare the callbacks as class methods:
+
+    When the callback method is declared this way, it won't be necessary to instantiate a new FileDestroyerCallback object in our model.
+
+    You can declare as many callbacks as you want inside your callback objects.

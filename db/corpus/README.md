@@ -1,29 +1,35 @@
-# Demo corpus: Aozora Bunko texts
+# Demo corpus: Rails Guides
 
-The `*.txt` files in this directory are the documents indexed by the full-text
-search demo. Each one is a short Japanese literary work from
-[Aozora Bunko](https://www.aozora.gr.jp/), fetched from the
-[aozorahack/aozorabunko_text](https://github.com/aozorahack/aozorabunko_text)
-mirror on GitHub and reduced to plain prose by `Aozora::TextCleaner`
-(`lib/aozora/text_cleaner.rb`).
+The `*.yml` files in this directory are the documents indexed by the full-text
+search demo: the English [Ruby on Rails Guides](https://guides.rubyonrails.org/)
+for the Rails version the app runs, split into sections. They are generated
+from the Markdown under `guides/source/` in the
+[rails/rails](https://github.com/rails/rails) repository by
+`bin/rails corpus:fetch` and `RailsGuides::SectionSplitter`
+(`lib/rails_guides/section_splitter.rb`).
 
-All of the works are in the public domain in Japan: their authors died more
-than 70 years ago. Aozora Bunko asks that the colophon of each file (the source
-edition and the names of the volunteers who typed and proofread it) stays with
-the text when it is redistributed, so it is kept verbatim in each file's front
-matter instead of being stripped with the rest of the markup.
+The guides are © the Rails contributors and are licensed under
+[Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
+Every file records the page it was taken from (`url`) and the source file and
+git ref it was built from (`source`, `ref`), and every section carries the
+anchor of its heading, so the demo can link back to the original text.
 
 ## File format
 
-Every file is UTF-8 with LF line endings and starts with a YAML front matter
-block (`title`, `author`, `card_id`, `card_url`, `source_url`, `colophon`)
-between `---` lines. The body that follows holds exactly one paragraph per line.
-Ruby readings (`《…》`), ruby start markers (`｜`), editorial notes (`［＃…］`)
-are removed, gaiji placeholders (`※` plus a note with the JIS X 0213 code) are
-replaced with the real character, lines shorter than eight
-characters (chapter numerals, headings, one-word replies) and punctuation-only
-section dividers are dropped, and only modern-script, modern-kana (新字新仮名)
-editions are used.
+One file per guide, named after the slug of the guide's URL, with the keys
+`slug`, `title`, `description`, `url`, `source`, `ref` and `sections`. Each
+section has `anchor` (the id of the heading on guides.rubyonrails.org),
+`title`, `parent` (the H2 title for an H3 section, empty for an H2 section) and
+`body`, a literal block of plain text.
+
+## How the split works
+
+A guide becomes one document per H2 heading (holding the text before its first
+H3) and one per H3 heading, with `####` and deeper headings folded into the
+enclosing document as a line of text; headings with no text of their own are
+skipped. Bodies are plain text: fenced code, images, HTML tags, link targets,
+emphasis markers, table pipes and `NOTE:`-style labels are removed, wrapped
+lines are joined and paragraphs are separated by a single blank line.
 
 ## Regenerating
 
@@ -31,32 +37,71 @@ editions are used.
 bin/rails corpus:fetch
 ```
 
-The task reads `works.yml`, looks up each card's text directory in the mirror
-through the GitHub contents API, downloads the `_ruby_` text, verifies the
-title and author lines against `works.yml`, and rewrites `<card_id>.txt`. It is
-idempotent: unchanged works are left alone and works removed from `works.yml`
-are deleted. The anonymous GitHub API limit is ample for a single run; set
-`GITHUB_TOKEN` if you run it repeatedly.
+The task reads `guides/source/documents.yaml` at the tag matching the app's
+Rails version, falling back to the newest tag of the same minor series (that
+lookup goes through api.github.com; set `GITHUB_TOKEN` if it is rate limited),
+downloads every guide that is not marked work in progress, splits it and
+rewrites the files here, deleting the files of guides that are no longer
+listed. The per-version release notes are left out on purpose: those pages are
+long changelogs rather than prose and would dominate the index. Set `GUIDES_REF`
+to build from another tag or branch. The output is deterministic, so a second
+run reports no changes. The table below is kept up to date by the task.
 
-## Works
+## Guides
 
-| Title | Author | Card | Paragraphs |
-| --- | --- | --- | ---: |
-| 注文の多い料理店 | 宮沢賢治 | [card43754](https://www.aozora.gr.jp/cards/000081/card43754.html) | 149 |
-| セロ弾きのゴーシュ | 宮沢賢治 | [card470](https://www.aozora.gr.jp/cards/000081/card470.html) | 195 |
-| よだかの星 | 宮沢賢治 | [card473](https://www.aozora.gr.jp/cards/000081/card473.html) | 66 |
-| やまなし | 宮沢賢治 | [card46605](https://www.aozora.gr.jp/cards/000081/card46605.html) | 79 |
-| 羅生門 | 芥川龍之介 | [card127](https://www.aozora.gr.jp/cards/000879/card127.html) | 37 |
-| 鼻 | 芥川龍之介 | [card42](https://www.aozora.gr.jp/cards/000879/card42.html) | 44 |
-| 蜘蛛の糸 | 芥川龍之介 | [card92](https://www.aozora.gr.jp/cards/000879/card92.html) | 15 |
-| トロッコ | 芥川龍之介 | [card43016](https://www.aozora.gr.jp/cards/000879/card43016.html) | 41 |
-| 走れメロス | 太宰治 | [card1567](https://www.aozora.gr.jp/cards/000035/card1567.html) | 74 |
-| 山月記 | 中島敦 | [card624](https://www.aozora.gr.jp/cards/000119/card624.html) | 25 |
-| 檸檬 | 梶井基次郎 | [card424](https://www.aozora.gr.jp/cards/000074/card424.html) | 30 |
-| ごん狐 | 新美南吉 | [card628](https://www.aozora.gr.jp/cards/000121/card628.html) | 71 |
-| 手袋を買いに | 新美南吉 | [card637](https://www.aozora.gr.jp/cards/000121/card637.html) | 49 |
-| 夢十夜 | 夏目漱石 | [card799](https://www.aozora.gr.jp/cards/000148/card799.html) | 176 |
-| 高瀬舟 | 森鴎外 | [card45245](https://www.aozora.gr.jp/cards/000129/card45245.html) | 36 |
-| 赤い蝋燭と人魚 | 小川未明 | [card54372](https://www.aozora.gr.jp/cards/001475/card54372.html) | 77 |
+<!-- corpus:fetch start -->
+Source: [rails/rails at `v8.1.4`](https://github.com/rails/rails/tree/v8.1.4/guides/source), fetched by `bin/rails corpus:fetch`.
 
-16 works, 1,164 paragraphs in total.
+| Guide | File | Sections |
+| --- | --- | ---: |
+| [Getting Started with Rails](https://guides.rubyonrails.org/v8.1/getting_started.html) | `getting_started` | 63 |
+| [Install Ruby on Rails Guide](https://guides.rubyonrails.org/v8.1/install_ruby_on_rails.html) | `install_ruby_on_rails` | 6 |
+| [Active Record Basics](https://guides.rubyonrails.org/v8.1/active_record_basics.html) | `active_record_basics` | 19 |
+| [Active Record Migrations](https://guides.rubyonrails.org/v8.1/active_record_migrations.html) | `active_record_migrations` | 42 |
+| [Active Record Validations](https://guides.rubyonrails.org/v8.1/active_record_validations.html) | `active_record_validations` | 47 |
+| [Active Record Callbacks](https://guides.rubyonrails.org/v8.1/active_record_callbacks.html) | `active_record_callbacks` | 26 |
+| [Active Record Associations](https://guides.rubyonrails.org/v8.1/association_basics.html) | `association_basics` | 43 |
+| [Active Record Query Interface](https://guides.rubyonrails.org/v8.1/active_record_querying.html) | `active_record_querying` | 75 |
+| [Active Model Basics](https://guides.rubyonrails.org/v8.1/active_model_basics.html) | `active_model_basics` | 15 |
+| [Action View Overview](https://guides.rubyonrails.org/v8.1/action_view_overview.html) | `action_view_overview` | 24 |
+| [Layouts and Rendering in Rails](https://guides.rubyonrails.org/v8.1/layouts_and_rendering.html) | `layouts_and_rendering` | 12 |
+| [Action View Helpers](https://guides.rubyonrails.org/v8.1/action_view_helpers.html) | `action_view_helpers` | 38 |
+| [Action View Form Helpers](https://guides.rubyonrails.org/v8.1/form_helpers.html) | `form_helpers` | 34 |
+| [Action Controller Overview](https://guides.rubyonrails.org/v8.1/action_controller_overview.html) | `action_controller_overview` | 27 |
+| [Action Controller Advanced Topics](https://guides.rubyonrails.org/v8.1/action_controller_advanced_topics.html) | `action_controller_advanced_topics` | 20 |
+| [Rails Routing from the Outside In](https://guides.rubyonrails.org/v8.1/routing.html) | `routing` | 56 |
+| [Active Support Core Extensions](https://guides.rubyonrails.org/v8.1/active_support_core_extensions.html) | `active_support_core_extensions` | 81 |
+| [Action Mailer Basics](https://guides.rubyonrails.org/v8.1/action_mailer_basics.html) | `action_mailer_basics` | 35 |
+| [Action Mailbox Basics](https://guides.rubyonrails.org/v8.1/action_mailbox_basics.html) | `action_mailbox_basics` | 18 |
+| [Action Text Overview](https://guides.rubyonrails.org/v8.1/action_text_overview.html) | `action_text_overview` | 16 |
+| [Active Job Basics](https://guides.rubyonrails.org/v8.1/active_job_basics.html) | `active_job_basics` | 26 |
+| [Active Storage Overview](https://guides.rubyonrails.org/v8.1/active_storage_overview.html) | `active_storage_overview` | 41 |
+| [Action Cable Overview](https://guides.rubyonrails.org/v8.1/action_cable_overview.html) | `action_cable_overview` | 34 |
+| [Testing Rails Applications](https://guides.rubyonrails.org/v8.1/testing.html) | `testing` | 63 |
+| [Debugging Rails Applications](https://guides.rubyonrails.org/v8.1/debugging_rails_applications.html) | `debugging_rails_applications` | 27 |
+| [Configuring Rails Applications](https://guides.rubyonrails.org/v8.1/configuring.html) | `configuring` | 38 |
+| [The Rails Command Line](https://guides.rubyonrails.org/v8.1/command_line.html) | `command_line` | 33 |
+| [The Asset Pipeline](https://guides.rubyonrails.org/v8.1/asset_pipeline.html) | `asset_pipeline` | 17 |
+| [Working with JavaScript in Rails](https://guides.rubyonrails.org/v8.1/working_with_javascript_in_rails.html) | `working_with_javascript_in_rails` | 14 |
+| [Internationalization (I18n)](https://guides.rubyonrails.org/v8.1/i18n.html) | `i18n` | 34 |
+| [Autoloading and Reloading Constants](https://guides.rubyonrails.org/v8.1/autoloading_and_reloading_constants.html) | `autoloading_and_reloading_constants` | 26 |
+| [Using Rails for API-only Applications](https://guides.rubyonrails.org/v8.1/api_app.html) | `api_app` | 15 |
+| [Tuning Performance for Deployment](https://guides.rubyonrails.org/v8.1/tuning_performance_for_deployment.html) | `tuning_performance_for_deployment` | 15 |
+| [Caching with Rails](https://guides.rubyonrails.org/v8.1/caching_with_rails.html) | `caching_with_rails` | 26 |
+| [Securing Rails Applications](https://guides.rubyonrails.org/v8.1/security.html) | `security` | 50 |
+| [Error Reporting in Rails Applications](https://guides.rubyonrails.org/v8.1/error_reporting.html) | `error_reporting` | 8 |
+| [Multiple Databases with Active Record](https://guides.rubyonrails.org/v8.1/active_record_multiple_databases.html) | `active_record_multiple_databases` | 11 |
+| [Active Record Encryption](https://guides.rubyonrails.org/v8.1/active_record_encryption.html) | `active_record_encryption` | 30 |
+| [Composite Primary Keys](https://guides.rubyonrails.org/v8.1/active_record_composite_primary_keys.html) | `active_record_composite_primary_keys` | 8 |
+| [The Basics of Creating Rails Plugins](https://guides.rubyonrails.org/v8.1/plugins.html) | `plugins` | 20 |
+| [Rails on Rack](https://guides.rubyonrails.org/v8.1/rails_on_rack.html) | `rails_on_rack` | 17 |
+| [Rails Generators & Templates](https://guides.rubyonrails.org/v8.1/generators.html) | `generators` | 27 |
+| [Contributing to Ruby on Rails](https://guides.rubyonrails.org/v8.1/contributing_to_ruby_on_rails.html) | `contributing_to_ruby_on_rails` | 31 |
+| [API Documentation Guidelines](https://guides.rubyonrails.org/v8.1/api_documentation_guidelines.html) | `api_documentation_guidelines` | 19 |
+| [Ruby on Rails Guides Guidelines](https://guides.rubyonrails.org/v8.1/ruby_on_rails_guides_guidelines.html) | `ruby_on_rails_guides_guidelines` | 15 |
+| [Installing Rails Core Development Dependencies](https://guides.rubyonrails.org/v8.1/development_dependencies_install.html) | `development_dependencies_install` | 9 |
+| [Maintenance Policy for Ruby on Rails](https://guides.rubyonrails.org/v8.1/maintenance_policy.html) | `maintenance_policy` | 7 |
+| [Upgrading Ruby on Rails](https://guides.rubyonrails.org/v8.1/upgrading_ruby_on_rails.html) | `upgrading_ruby_on_rails` | 147 |
+
+48 guides, 1,505 sections in total.
+<!-- corpus:fetch end -->

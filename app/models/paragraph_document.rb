@@ -1,2 +1,0 @@
-class ParagraphDocument < ApplicationRecord
-end

@@ -55,8 +55,14 @@ const installApp = async () => {
   const progress = new Progress();
   await progress.attach(self);
 
-  await initDB(progress);
-  await initVM(progress);
+  try {
+    await initDB(progress);
+    await initVM(progress);
+  } catch (error) {
+    // A failed install leaves the launcher waiting forever otherwise; say why on the page.
+    progress.updateStep(`Installation failed: ${error?.message || error}`);
+    throw error;
+  }
 };
 
 self.addEventListener("install", (event) => {

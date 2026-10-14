@@ -3,96 +3,149 @@ require "net/http"
 require "yaml"
 
 namespace :corpus do
-  desc "Download the works in db/corpus/works.yml from the aozorahack mirror and write db/corpus/<card_id>.txt"
+  desc "Download the Rails Guides for the app's Rails version, split them into sections and write db/corpus/<slug>.yml"
   task fetch: :environment do
-    mirror = "aozorahack/aozorabunko_text"
+    repository = "rails/rails"
     corpus_dir = Rails.root.join("db/corpus")
-    works = YAML.load_file(corpus_dir.join("works.yml"))
+    readme_path = corpus_dir.join("README.md")
+    readme_markers = [ "<!-- corpus:fetch start -->", "<!-- corpus:fetch end -->" ]
+    headers = { "User-Agent" => "rails-active-search-sqlite-demo corpus:fetch" }
 
-    http_get = lambda do |url|
-      uri = URI(url)
-      headers = { "User-Agent" => "rails-active-search-sqlite-demo corpus:fetch" }
-      # Anonymous calls to the contents API are capped at 60 per hour, which is plenty
-      # for a handful of authors; a token only matters when the task is run repeatedly.
-      if uri.host == "api.github.com" && ENV["GITHUB_TOKEN"].present?
-        headers["Authorization"] = "Bearer #{ENV["GITHUB_TOKEN"]}"
+    # Returns nil for a 404 so that callers can tell "no such ref" from a real failure.
+    read_response = lambda do |response, url|
+      case response
+      when Net::HTTPSuccess then response.body.force_encoding(Encoding::UTF_8)
+      when Net::HTTPNotFound then nil
+      else raise "GET #{url} failed: #{response.code} #{response.message}"
       end
-      response = Net::HTTP.get_response(uri, headers)
-      raise "GET #{url} failed: #{response.code} #{response.message}" unless response.is_a?(Net::HTTPSuccess)
-      response.body.b
     end
 
-    # One listing per author serves every work by that author.
-    listings = Hash.new do |cache, person|
-      entries = JSON.parse(http_get.call("https://api.github.com/repos/#{mirror}/contents/cards/#{person}/files"))
-      cache[person] = entries.filter_map { |entry| entry["name"] if entry["type"] == "dir" }
+    fetch_source = lambda do |http, ref, name|
+      path = "/#{repository}/#{ref}/guides/source/#{name}"
+      read_response.call(http.get(path, headers), "https://#{http.address}#{path}")
     end
 
-    # A card can ship several text variants. The ruby one carries the full text, and
-    # a higher trailing number is a later revision of the file.
-    pick_dir = lambda do |dirs, card_id|
-      pattern = /\A#{card_id}_(ruby|txt)(?:_(\d+))?\z/
-      dirs.filter_map { |name| (match = name.match(pattern)) && [ name, match[1] == "ruby" ? 1 : 0, match[2].to_i ] }
-          .max_by { |_, variant, revision| [ variant, revision ] }
-          &.first
+    # Anonymous calls to the API are rate limited, so a token may be sent here; it never
+    # goes to any other host.
+    newest_tag = lambda do |prefix|
+      url = "https://api.github.com/repos/#{repository}/git/matching-refs/tags/#{prefix}"
+      api_headers = headers.merge("Accept" => "application/vnd.github+json")
+      api_headers["Authorization"] = "Bearer #{ENV["GITHUB_TOKEN"]}" if ENV["GITHUB_TOKEN"].present?
+      body = read_response.call(Net::HTTP.get_response(URI(url), api_headers), url)
+      tags = JSON.parse(body.to_s).map { |entry| entry["ref"].delete_prefix("refs/tags/") }
+      tags.max_by { |tag| Gem::Version.new(tag.delete_prefix("v")) } || abort("no tag matching #{prefix} in #{repository}")
     end
 
-    # The mirror keeps Aozora's original Shift_JIS files; CP932 covers the vendor
-    # extensions some of them use. A UTF-8 file is passed through untouched.
-    to_utf8 = lambda do |bytes|
-      utf8 = bytes.dup.force_encoding(Encoding::UTF_8)
-      utf8.valid_encoding? ? utf8 : bytes.force_encoding(Encoding::Windows_31J).encode(Encoding::UTF_8)
-    end
-
-    render = lambda do |work, cleaned, source_url|
-      front_matter = {
-        "title" => cleaned[:title],
-        "author" => cleaned[:author],
-        "card_id" => work["card_id"],
-        "card_url" => format("https://www.aozora.gr.jp/cards/%06d/card%d.html", work["person_id"], work["card_id"]),
-        "source_url" => source_url,
-        "colophon" => cleaned[:colophon]
-      }
-      YAML.dump(front_matter, line_width: -1) + "---\n" + cleaned[:paragraphs].join("\n") + "\n"
-    end
-
-    works.each do |work|
-      person = format("%06d", work["person_id"])
-      dir = pick_dir.call(listings[person], work["card_id"])
-      abort "#{work["card_id"]}: no text directory under cards/#{person}/files in #{mirror}" unless dir
-
-      source_url = "https://raw.githubusercontent.com/#{mirror}/master/cards/#{person}/files/#{dir}/#{dir}.txt"
-      cleaned = Aozora::TextCleaner.call(to_utf8.call(http_get.call(source_url)))
-
-      # The card ids in works.yml were looked up by hand, so make sure each one
-      # really is the work it claims to be before anything lands in the repository.
-      unless cleaned[:title] == work["title"] && cleaned[:author] == work["author"]
-        abort "#{work["card_id"]}: expected #{work["title"]} / #{work["author"]}, got #{cleaned[:title]} / #{cleaned[:author]}"
+    # Psych only picks the literal style for strings that contain a newline; a section
+    # with a single paragraph should read the same way as every other one.
+    dump_yaml = lambda do |data|
+      tree = Psych::Visitors::YAMLTree.create(line_width: -1)
+      tree << data
+      tree.tree.grep(Psych::Nodes::Mapping).each do |mapping|
+        mapping.children.each_slice(2) do |key, value|
+          value.style = Psych::Nodes::Scalar::LITERAL if key.value == "body" && value.is_a?(Psych::Nodes::Scalar)
+        end
       end
+      tree.tree.yaml(nil, line_width: -1)
+    end
 
-      # A gaiji outside the mapping is lost from the text, which is worth knowing but
-      # not worth failing the whole fetch over.
-      cleaned[:unmapped_gaiji].each do |note|
-        warn "#{work["card_id"]}: dropped gaiji with unmapped code: ※［＃#{note}］"
-      end
-
-      path = corpus_dir.join("#{work["card_id"]}.txt")
-      content = render.call(work, cleaned, source_url)
+    write_if_changed = lambda do |path, content|
       if path.exist? && path.read == content
-        puts "unchanged #{path.relative_path_from(Rails.root)}"
+        false
       else
         path.write(content)
-        puts "wrote #{path.relative_path_from(Rails.root)} (#{cleaned[:paragraphs].size} paragraphs)"
+        true
       end
     end
 
-    # works.yml is the single source of truth, so a work removed from it disappears here too.
-    expected = works.map { |work| "#{work["card_id"]}.txt" }
-    corpus_dir.glob("*.txt").each do |path|
-      next if expected.include?(path.basename.to_s)
+    changes = 0
+    guides = []
 
-      path.delete
-      puts "removed #{path.relative_path_from(Rails.root)} (not in works.yml)"
+    Net::HTTP.start("raw.githubusercontent.com", 443, use_ssl: true) do |http|
+      # The guides to search are the ones for the Rails version the app runs. A tag can
+      # be missing for a while after a release is cut; the newest tag of the same minor
+      # series is then the closest match.
+      ref = ENV.fetch("GUIDES_REF") { "v#{Rails.version}" }
+      index = fetch_source.call(http, ref, "documents.yaml")
+      if index.nil?
+        abort "#{ref}: guides/source/documents.yaml not found in #{repository}" if ENV["GUIDES_REF"].present?
+
+        ref = newest_tag.call("v#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}.")
+        index = fetch_source.call(http, ref, "documents.yaml") || abort("#{ref}: guides/source/documents.yaml not found in #{repository}")
+      end
+      series = ref[/\Av(\d+\.\d+)/, 1] || "#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}"
+      puts "fetching guides from #{repository} at #{ref}"
+
+      # The per-version release notes are changelogs rather than prose and would dominate the index,
+      # so they stay out; the upgrading guide that shares their group in documents.yaml stays in.
+      documents = YAML.safe_load(index)
+                      .flat_map { |group| group["documents"] }
+                      .reject { |document| document["work_in_progress"] || document["url"].end_with?("_release_notes.html") }
+
+      documents.each do |document|
+        slug = document["url"].delete_suffix(".html")
+        markdown = fetch_source.call(http, ref, "#{slug}.md") || abort("#{slug}: guides/source/#{slug}.md not found at #{ref}")
+        split = RailsGuides::SectionSplitter.call(markdown)
+
+        guide = {
+          "slug" => slug,
+          "title" => split[:title] || document["name"],
+          "description" => document["description"].to_s.squish,
+          "url" => "https://guides.rubyonrails.org/v#{series}/#{slug}.html",
+          "source" => "https://github.com/#{repository}/blob/#{ref}/guides/source/#{slug}.md",
+          "ref" => ref,
+          "sections" => split[:sections].map { |section| section.transform_keys(&:to_s) }
+        }
+        guides << guide
+
+        path = corpus_dir.join("#{slug}.yml")
+        if write_if_changed.call(path, dump_yaml.call(guide))
+          changes += 1
+          puts "wrote #{path.relative_path_from(Rails.root)} (#{guide["sections"].size} sections)"
+        else
+          puts "unchanged #{path.relative_path_from(Rails.root)}"
+        end
+      end
+
+      # documents.yaml is the single source of truth, so a guide dropped from it disappears here too.
+      expected = guides.map { |guide| "#{guide["slug"]}.yml" }
+      corpus_dir.glob("*.yml").sort.each do |path|
+        next if expected.include?(path.basename.to_s)
+
+        path.delete
+        changes += 1
+        puts "removed #{path.relative_path_from(Rails.root)} (not in documents.yaml)"
+      end
+
+      # The README keeps a table of the guides between two marker comments; the prose
+      # around it is written by hand.
+      sections = guides.sum { |guide| guide["sections"].size }
+      rows = guides.map { |guide| "| [#{guide["title"]}](#{guide["url"]}) | `#{guide["slug"]}` | #{guide["sections"].size} |" }
+      listing = <<~MARKDOWN
+        #{readme_markers.first}
+        Source: [#{repository} at `#{ref}`](https://github.com/#{repository}/tree/#{ref}/guides/source), fetched by `bin/rails corpus:fetch`.
+
+        | Guide | File | Sections |
+        | --- | --- | ---: |
+        #{rows.join("\n")}
+
+        #{guides.size} guides, #{ActiveSupport::NumberHelper.number_to_delimited(sections)} sections in total.
+        #{readme_markers.last}
+      MARKDOWN
+      readme = readme_path.read
+      if readme.include?(readme_markers.first) && readme.include?(readme_markers.last)
+        updated = readme.sub(/#{Regexp.escape(readme_markers.first)}.*#{Regexp.escape(readme_markers.last)}\n/m) { listing }
+        if write_if_changed.call(readme_path, updated)
+          changes += 1
+          puts "wrote #{readme_path.relative_path_from(Rails.root)}"
+        end
+      else
+        warn "#{readme_path.relative_path_from(Rails.root)}: markers not found, table not updated"
+      end
+
+      bytes = corpus_dir.glob("*.yml").sum(&:size)
+      puts "#{guides.size} guides, #{sections} sections, #{bytes} bytes in #{corpus_dir.relative_path_from(Rails.root)}"
+      puts(changes.zero? ? "no changes" : "#{changes} file(s) changed")
     end
   end
 end

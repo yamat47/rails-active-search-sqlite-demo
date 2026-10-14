@@ -21,9 +21,9 @@ namespace :demo do
     copy = SQLite3::Database.new(target)
     copy.execute("PRAGMA journal_mode = DELETE")
     copy.execute("UPDATE ar_internal_metadata SET value = 'wasm' WHERE key = 'environment'")
-    paragraphs = copy.get_first_value("SELECT count(*) FROM paragraphs")
+    sections = copy.get_first_value("SELECT count(*) FROM sections")
     copy.close
 
-    puts "#{target}: #{(File.size(target) / 1024.0 / 1024).round(1)} MB, #{paragraphs} paragraphs"
+    puts "#{target}: #{(File.size(target) / 1024.0 / 1024).round(1)} MB, #{sections} sections"
   end
 end

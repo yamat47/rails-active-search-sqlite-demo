@@ -1,0 +1,114 @@
+---
+slug: active_record_composite_primary_keys
+title: Composite Primary Keys
+description: This guide is an introduction to composite primary keys for database tables.
+url: https://guides.rubyonrails.org/v8.1/active_record_composite_primary_keys.html
+source: https://github.com/rails/rails/blob/v8.1.4/guides/source/active_record_composite_primary_keys.md
+ref: v8.1.4
+sections:
+- anchor: what-are-composite-primary-keys-questionmark
+  title: What are Composite Primary Keys?
+  parent:
+  body: |-
+    Sometimes a single column's value isn't enough to uniquely identify every row of a table, and a combination of two or more columns is required. This can be the case when using a legacy database schema without a single id column as a primary key, or when altering schemas for sharding or multitenancy.
+
+    Composite primary keys increase complexity and can be slower than a single primary key column. Ensure your use-case requires a composite primary key before using one.
+- anchor: composite-primary-key-migrations
+  title: Composite Primary Key Migrations
+  parent:
+  body: |-
+    You can create a table with a composite primary key by passing the :primary_key option to create_table with an array value:
+- anchor: using-find
+  title: 'Using #find'
+  parent: Querying Models
+  body: |-
+    If your table uses a composite primary key, you'll need to pass an array when using #find to locate a record:
+
+    The SQL equivalent of the above is:
+
+    To find multiple records with composite IDs, pass an array of arrays to #find:
+
+    The SQL equivalent of the above is:
+
+    Models with composite primary keys will also use the full composite primary key when ordering:
+
+    The SQL equivalent of the above is:
+
+    Likewise, last will use the full composite primary key with the sort direction for each column reversed:
+
+    The SQL equivalent of the above is:
+
+    Here, the sort direction is descending for both store_id and sku because both columns are part of the composite primary key.
+- anchor: using-where
+  title: 'Using #where'
+  parent: Querying Models
+  body: |-
+    Hash conditions for #where may be specified in a tuple-like syntax. This can be useful for querying composite primary key relations:
+
+    Conditions with :id
+
+    When specifying conditions on methods like find_by and where, the use of id will match against an :id attribute on the model. This is different from find, where the ID passed in should be a primary key value.
+
+    For example, this find_by call matches the :id column, not the full composite primary key:
+
+    And this where call behaves the same way:
+
+    Take caution when using find_by(id:) on models where :id is not the primary key, such as composite primary key models. See the Active Record Querying guide to learn more.
+- anchor: associations-between-models-with-composite-primary-keys
+  title: Associations between Models with Composite Primary Keys
+  parent:
+  body: |-
+    Rails can often infer the primary key-foreign key relationships between associated models. However, when dealing with composite primary keys, Rails typically defaults to using only part of the composite key, usually the id column, unless explicitly instructed otherwise. This default behavior only works if the model's composite primary key contains the :id column, and the column is unique for all records.
+
+    Consider the following example:
+
+    In this setup, Order has a composite primary key consisting of [:shop_id, :id], and Book belongs to Order. Rails will assume that the :id column should be used as the primary key for the association between an order and its books. It will infer that the foreign key column on the books table is :order_id.
+
+    Below we create an Order and a Book associated with it:
+
+    To access the book's order, we reload the association:
+
+    When doing so, Rails will generate the following SQL to access the order:
+
+    You can see that Rails uses the order's id in its query, rather than both the shop_id and the id. In this case, the id is sufficient because the model's composite primary key does in fact contain the :id column, and the column is unique for all records.
+
+    However, if the above requirements are not met or you would like to use the full composite primary key in associations, you can set the foreign_key: option on the association. This option specifies a composite foreign key on the association; all columns in the foreign key will be used when querying the associated record(s). For example:
+
+    In this setup, Author has a composite primary key consisting of [:first_name, :last_name], and Book belongs to Author with a composite foreign key [:author_first_name, :author_last_name].
+
+    Create an Author and a Book associated with it:
+
+    To access the book's author, we reload the association:
+
+    Rails will now use the :first_name and :last_name from the composite primary key in the SQL query:
+- anchor: forms-for-composite-primary-key-models
+  title: Forms for Composite Primary Key Models
+  parent:
+  body: |-
+    Forms may also be built for composite primary key models. See the Form Helpers guide for more information on the form builder syntax.
+
+    Given a @book model object with a composite key [:author_id, :id]:
+
+    The following form:
+
+    Outputs:
+
+    Note the generated URL contains the author_id and id delimited by an underscore. Once submitted, the controller can extract primary key values from the parameters and update the record. See the next section for more details.
+- anchor: composite-key-parameters
+  title: Composite Key Parameters
+  parent:
+  body: |-
+    Composite key parameters contain multiple values in one parameter. For this reason, we need to be able to extract each value and pass them to Active Record. We can leverage the extract_value method for this use-case.
+
+    Given the following controller:
+
+    And the following route:
+
+    When a user opens the URL /books/4_2, the controller will extract the composite key value ["4", "2"] and pass it to Book.find to render the right record in the view. The extract_value method may be used to extract arrays out of any delimited parameters.
+- anchor: composite-primary-key-fixtures
+  title: Composite Primary Key Fixtures
+  parent:
+  body: |-
+    Fixtures for composite primary key tables are fairly similar to normal tables. When using an id column, the column may be omitted as usual:
+
+    However, in order to support composite primary key relationships, you must use the composite_identify method:

@@ -1,0 +1,2 @@
+class TrigramSectionDocument < ApplicationRecord
+end

@@ -1,0 +1,2 @@
+class PorterSectionDocument < ApplicationRecord
+end

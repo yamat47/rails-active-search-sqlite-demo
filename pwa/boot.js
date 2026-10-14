@@ -2,11 +2,15 @@
 // moves on to the application once it is ready. Based on the launcher wasmify-rails generates.
 const workerUrl = import.meta.env.MODE === "production" ? "/rails.sw.js" : "/dev-sw.js?dev-sw";
 
-async function registerServiceWorker() {
+async function registerServiceWorker(onFailure) {
   for (const registration of await navigator.serviceWorker.getRegistrations()) {
     if (registration.installing?.state === "installing") return;
   }
-  await navigator.serviceWorker.register(workerUrl, { scope: "/", type: "module" });
+  const registration = await navigator.serviceWorker.register(workerUrl, { scope: "/", type: "module" });
+  // An install that throws ends as "redundant" and `ready` never resolves; report it instead.
+  registration.installing?.addEventListener("statechange", (event) => {
+    if (event.target.state === "redundant") onFailure();
+  });
 }
 
 async function resetServiceWorker() {
@@ -43,7 +47,10 @@ async function init() {
 
   if (!navigator.serviceWorker.controller) {
     message.textContent = "Installing...";
-    await registerServiceWorker();
+    await registerServiceWorker(() => {
+      output.textContent += "The Service Worker failed to install. The messages above say where it stopped; Reset and reload to try again.\n";
+      progress.removeAttribute("value");
+    });
   }
 
   await navigator.serviceWorker.ready;

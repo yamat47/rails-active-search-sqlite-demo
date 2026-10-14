@@ -1,2 +1,0 @@
-class TrigramParagraphDocument < ApplicationRecord
-end
