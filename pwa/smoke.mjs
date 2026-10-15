@@ -57,6 +57,14 @@ try {
   const marks = await page.$$eval("#strategy-porter mark", (nodes) => nodes.map((node) => node.textContent.toLowerCase()));
   if (!marks.some((mark) => mark.startsWith("callback"))) fail(`expected a highlighted callback, got ${JSON.stringify(marks.slice(0, 5))}`);
 
+  // The form itself, through Turbo and the Stimulus controller: only the query reaches the URL.
+  await page.fill(".search-input", "validate");
+  await page.click(".search-submit");
+  await page.waitForURL((url) => url.searchParams.get("q") === "validate", { timeout: 60_000 });
+  const search = new URL(page.url()).search;
+  console.log(`URL after submitting the form: ${search}`);
+  if (search !== "?q=validate") fail(`expected ?q=validate, got ${search}`);
+
   console.log(process.exitCode ? "Smoke test failed." : "Smoke test passed.");
 } catch (error) {
   fail(error.stack || String(error));

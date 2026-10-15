@@ -1,7 +1,8 @@
-<%= form_with url: root_path, method: :get, class: "search-form", data: { turbo_frame: "_top" } do |form| %>
+<%= form_with url: root_path, method: :get, class: "search-form", data: { controller: "clean-params", action: "submit->clean-params#submit" } do |form| %>
   <%= form.search_field :q, value: @query, placeholder: "Search the Rails Guides (e.g. callbacks, has_many, deprecat)", autofocus: true, class: "search-input" %>
   <%= form.select :guide, options_for_select([ [ "All guides", "" ] ] + @guides.map { |g| [ g.title, g.id ] }, @guide&.id), {}, class: "search-guide" %>
-  <%= form.submit "Search", class: "search-submit" %>
+  <%# No name, so the button's value does not travel in the URL as commit=Search. %>
+  <%= form.submit "Search", name: nil, class: "search-submit" %>
 <% end %>
 
 <p class="samples">

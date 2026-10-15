@@ -17,6 +17,13 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".column", count: 0
   end
 
+  test "the form keeps the URL to the query: no commit value, empty fields dropped on submit" do
+    get root_path
+    assert_select "form.search-form[data-controller=clean-params][data-action='submit->clean-params#submit']"
+    assert_select "form.search-form input[type=submit]:not([name])"
+    assert_select "script[type='importmap']"
+  end
+
   test "a query renders one column per strategy with the hits it has" do
     get root_path(q: "callba")
     assert_response :success
