@@ -3,15 +3,18 @@
 # Not an Active Record model: the three are fixed by the migrations in db/migrate, and the demo
 # page shows them side by side for the same query.
 class SearchStrategy
-  attr_reader :key, :index, :tokenize, :title, :summary, :migration_line
+  attr_reader :key, :index, :tokenize, :title, :summary, :migration_line, :snippet_words
 
-  def initialize(key:, index:, tokenize:, title:, summary:, migration_line:)
+  # FTS5's snippet() measures its window in tokens of the index's tokenizer: 30 words for
+  # unicode61 and porter, but 30 trigrams, about 30 characters, for trigram, so that one asks for more.
+  def initialize(key:, index:, tokenize:, title:, summary:, migration_line:, snippet_words: 30)
     @key = key
     @index = index
     @tokenize = tokenize
     @title = title
     @summary = summary
     @migration_line = migration_line
+    @snippet_words = snippet_words
   end
 
   ALL = [
@@ -43,7 +46,8 @@ class SearchStrategy
       summary: "Every three characters is a token, so a query matches inside a word: \"callba\" " \
                "finds callbacks and \"find_b\" finds find_by. A query of one or two characters " \
                "matches nothing, and short queries match widely.",
-      migration_line: %q(create_virtual_table :trigram_section_documents_fts, :fts5, [ "title", "body", "tokenize='trigram'" ])
+      migration_line: %q(create_virtual_table :trigram_section_documents_fts, :fts5, [ "title", "body", "tokenize='trigram'" ]),
+      snippet_words: 160
     )
   ].freeze
 
@@ -53,7 +57,7 @@ class SearchStrategy
 
   def search(query, guide_id: nil, limit: 10)
     search = Section.search(query, index: index)
-      .highlight(title: true, body: { snippet: { words: 30 } })
+      .highlight(title: true, body: { snippet: { words: snippet_words } })
       .limit(limit)
     search = search.filter(guide_id: guide_id) if guide_id.present?
     search.results
