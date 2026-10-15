@@ -6,7 +6,8 @@ class SearchStrategy
   attr_reader :key, :index, :tokenize, :title, :summary, :migration_line, :snippet_words
 
   # FTS5's snippet() measures its window in tokens of the index's tokenizer: 30 words for
-  # unicode61 and porter, but 30 trigrams, about 30 characters, for trigram, so that one asks for more.
+  # unicode61 and porter, but 30 trigrams, about 30 characters, for trigram, so that one asks for
+  # more. FTS5 caps the window at 64 tokens, so a trigram snippet never exceeds about 64 characters.
   def initialize(key:, index:, tokenize:, title:, summary:, migration_line:, snippet_words: 30)
     @key = key
     @index = index
@@ -45,9 +46,10 @@ class SearchStrategy
       title: "trigram",
       summary: "Every three characters is a token, so a query matches inside a word: \"callba\" " \
                "finds callbacks and \"find_b\" finds find_by. A query of one or two characters " \
-               "matches nothing, and short queries match widely.",
+               "matches nothing, short queries match widely, and snippets are short: FTS5 caps " \
+               "them at 64 tokens, which here means 64 characters.",
       migration_line: %q(create_virtual_table :trigram_section_documents_fts, :fts5, [ "title", "body", "tokenize='trigram'" ]),
-      snippet_words: 160
+      snippet_words: 64
     )
   ].freeze
 
