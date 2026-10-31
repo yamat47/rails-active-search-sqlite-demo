@@ -1,6 +1,11 @@
 # One document and one query, as each of the three tokenizers sees them: the tokens of both, and
 # whether, and where, the document matches. The explanation page's playground.
 class TokenizerPlayground
+  # Linked from the page's note on text without spaces, so it is named: a query of three characters
+  # or more, since trigram makes no token of fewer.
+  WITHOUT_SPACES = { label: "a sentence without spaces",
+    text: "コールバックはレコードの保存の前後に呼ばれます。", query: "レコード" }.freeze
+
   # What the search page shows for a query, too, so the reader can get from one to the other.
   PRESETS = [
     { label: "callba finds callbacks only inside a word",
@@ -11,8 +16,7 @@ class TokenizerPlayground
       text: "A model that has many of something declares the association with has_many.", query: "has_many" },
     { label: "N+1 is two tokens or five",
       text: "Eager loading avoids the N+1 queries problem.", query: "N+1" },
-    { label: "a sentence without spaces",
-      text: "コールバックはレコードの保存の前後に呼ばれます。", query: "保存" }
+    WITHOUT_SPACES
   ].freeze
 
   Outcome = Struct.new(:strategy, :document_tokens, :query_tokens, :highlight, :error) do
