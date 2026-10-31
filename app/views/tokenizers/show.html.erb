@@ -1,0 +1,155 @@
+<% content_for :title, "How the three tokenizers differ · Rails Active Search on SQLite FTS5" %>
+<article class="explainer">
+  <header class="explainer-header">
+    <h1>How the three tokenizers differ</h1>
+    <p class="lede">
+      The <%= link_to "search page", root_path %> runs one query against three indexes of the same text and gets
+      three different answers. Nothing in the query or the text changes between them. What changes is how FTS5
+      cuts the text into tokens before it stores or looks anything up, and that one choice decides what a search
+      can find.
+    </p>
+    <nav class="explainer-nav" aria-label="On this page">
+      <a href="#tokens">Tokens</a>
+      <a href="#cuts">One sentence, three cuts</a>
+      <a href="#the-three">The three tokenizers</a>
+      <a href="#hits">Same query, different hits</a>
+      <a href="#playground">Playground</a>
+      <a href="#pitfalls">Pitfalls</a>
+      <a href="#choosing">Which one</a>
+    </nav>
+  </header>
+
+  <section id="tokens" class="explainer-section">
+    <h2>Search matches tokens, not text</h2>
+    <p>
+      A full-text index never compares your query with the text. When a section is indexed, a <strong>tokenizer</strong>
+      cuts its text into tokens, and the index remembers which tokens each section contains. When you search, the
+      <em>same</em> tokenizer cuts your query into tokens, and a section is a hit when it contains them.
+    </p>
+    <%= render "pipeline" %>
+    <p>
+      So <code>callbacks</code> finds the sections that contain the token <code>callbacks</code>, and nothing
+      else: not <code>callback</code>, not <code>Callbacks</code> spelled differently by the tokenizer, not the
+      <code>callba</code> you had typed before you hit enter. Every difference between the three columns of the
+      search page comes down to which tokens each tokenizer makes of the same characters.
+    </p>
+  </section>
+
+  <section id="cuts" class="explainer-section">
+    <h2>One sentence, three ways to cut it</h2>
+    <p>
+      Here is one sentence as each tokenizer sees it. Each chip is one token, drawn under the characters it was
+      cut from.
+    </p>
+    <%= render "cuts", cuts: @cuts %>
+    <ul class="explainer-notes">
+      <li><strong>unicode61</strong> cuts at spaces and punctuation, lowercases, and keeps the words as they are. The underscore is punctuation, so <code>has_many</code> is two tokens.</li>
+      <li><strong>porter</strong> starts from the same words and trims each one to a stem: <code>validations</code> loses <code>ations</code> and so would <code>validate</code> and <code>valid</code>, which is how one query reaches all three. A dashed chip is a stem that is not simply a shorter word: <code>many</code> becomes <code>mani</code>, so that <code>many</code> and <code>mania</code> meet.</li>
+      <li><strong>trigram</strong> ignores words altogether: every window of three characters is a token, spaces (<code>␣</code>) and full stops included, and the windows overlap. A query of three or more characters matches wherever those characters sit, inside a word or across two.</li>
+    </ul>
+  </section>
+
+  <section id="the-three" class="explainer-section">
+    <h2>The three tokenizers</h2>
+    <p>
+      All three indexes are declared the same way in <code>config/search.rb</code> and written by the same
+      generator. The only difference is one option on the <code>create_virtual_table</code> line of their migrations.
+    </p>
+    <%= render "strategies" %>
+  </section>
+
+  <section id="hits" class="explainer-section">
+    <h2>Same query, different hits</h2>
+    <p>
+      The search page's sample queries, counted over the <%= number_with_delimiter Section.count %> sections of the
+      guides as this page loads. The dark part of a bar is the sections all three tokenizers find; the light part is
+      what this one finds and at least one of the others does not. Click a query to see the hits.
+    </p>
+    <%= render "comparison", comparisons: @comparisons %>
+  </section>
+
+  <section id="playground" class="explainer-section">
+    <h2>Playground</h2>
+    <p>
+      Type a piece of text and a query, and see what each tokenizer makes of them and whether the text would be a
+      hit. The match is FTS5's own answer, through a temporary table built with each tokenizer, and the query is
+      passed the way Active Search passes it.
+    </p>
+    <%= render "playground_form", playground: @playground %>
+    <%= render "playground_results", playground: @playground %>
+  </section>
+
+  <section id="pitfalls" class="explainer-section">
+    <h2>Pitfalls</h2>
+    <dl class="pitfalls">
+      <dt><code>has_many</code> is the phrase "has many"</dt>
+      <dd>
+        Active Search has no query syntax of its own: it passes a plain word to FTS5 as it is and quotes anything
+        else as a phrase. <code>has_many</code> is a plain word to Active Search, but unicode61 and porter then cut it
+        into <code>has</code> and <code>many</code>, which FTS5 reads as the phrase "has many". That finds every
+        <code>has_many</code>, and also prose that says a model has many of something. Only trigram keeps the
+        underscore. <%= link_to "See it", root_path(q: "has_many") %>.
+      </dd>
+      <dt><code>N+1</code> is the phrase "n 1", or one token</dt>
+      <dd>
+        Not a plain word, so Active Search quotes it. unicode61 and porter cut the phrase into <code>n</code> and
+        <code>1</code>; trigram makes the single token <code>n+1</code>, which only the exact spelling contains.
+        <%= link_to "See it", root_path(q: "N+1") %>.
+      </dd>
+      <dt>porter folds words that only look alike</dt>
+      <dd>
+        A stemmer knows spelling, not meaning. <code>general</code>, <code>generate</code>, <code>generation</code> and
+        <code>generic</code> are all <code>gener</code>; <code>organ</code> and <code>organization</code> are both
+        <code>organ</code>; <code>relative</code> is <code>rel</code>. A search for one finds the others, and ranks
+        them as if they were the same word. Try them in the <a href="#playground">playground</a>.
+      </dd>
+      <dt>trigram needs three characters, and matches a lot with few</dt>
+      <dd>
+        A query of one or two characters is no token at all, so it matches nothing. Three or four characters
+        match inside many unrelated words (<code>ate</code> is in create, update, validate and template). And
+        FTS5 measures a snippet in tokens, so a trigram snippet is at most 64 characters long whatever you ask for.
+      </dd>
+    </dl>
+  </section>
+
+  <section id="choosing" class="explainer-section">
+    <h2>Which one</h2>
+    <table class="choosing">
+      <thead>
+        <tr><th>You want</th><th>Pick</th><th>Because</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>exact words, identifiers kept apart from prose, the smallest index</td>
+          <td><a href="#unicode61" class="strategy-link strategy-unicode61">unicode61</a></td>
+          <td>what you type is what is matched; nothing surprising, and nothing forgiving</td>
+        </tr>
+        <tr>
+          <td>English prose where plural, tense and -tion should not matter</td>
+          <td><a href="#porter" class="strategy-link strategy-porter">porter</a></td>
+          <td>one query reaches every form of a word, at the cost of a few false cousins</td>
+        </tr>
+        <tr>
+          <td>partial words as you type, code and identifiers, or text with no spaces between words</td>
+          <td><a href="#trigram" class="strategy-link strategy-trigram">trigram</a></td>
+          <td>matches by substring, which is the only way in when words are not where a tokenizer looks</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Two of them can live side by side, as they do here: the index is a table, and a model may have more than one.
+    </p>
+  </section>
+
+  <section id="other-languages" class="explainer-section">
+    <h2>Text without spaces</h2>
+    <p>
+      unicode61 and porter find words by looking for the spaces and punctuation between them. A Japanese sentence
+      has neither, so the whole sentence becomes one token, and a query matches only the whole sentence. trigram
+      does not look for words, so it works on such text as it does on English:
+      <% japanese = TokenizerPlayground::WITHOUT_SPACES %>
+      <%= link_to "try a Japanese sentence in the playground", tokenizers_path(text: japanese[:text], q: japanese[:query], anchor: "playground") %>.
+      The guides are English, so the search page cannot show this, but the playground can.
+    </p>
+  </section>
+</article>

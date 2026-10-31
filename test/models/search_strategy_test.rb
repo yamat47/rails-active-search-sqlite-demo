@@ -1,7 +1,11 @@
 require "test_helper"
 
 class SearchStrategyTest < ActiveSupport::TestCase
-  def strategy(key) = SearchStrategy.all.find { |s| s.key == key }
+  def strategy(key) = SearchStrategy.find(key)
+
+  test "an unknown tokenizer key raises rather than answering nil" do
+    assert_raises(ArgumentError) { SearchStrategy.find("nope") }
+  end
 
   test "unicode61 lowercases and splits on punctuation, underscores included" do
     assert_equal [ "has", "many", "and", "belongs", "to" ], strategy("unicode61").tokens("has_many and belongs_to")

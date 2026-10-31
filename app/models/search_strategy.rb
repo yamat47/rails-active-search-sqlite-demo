@@ -55,6 +55,8 @@ class SearchStrategy
 
   class << self
     def all = ALL
+
+    def find(key) = ALL.find { |strategy| strategy.key == key } || raise(ArgumentError, "no tokenizer #{key}")
   end
 
   def search(query, guide_id: nil, limit: 10)
@@ -63,6 +65,14 @@ class SearchStrategy
       .limit(limit)
     search = search.filter(guide_id: guide_id) if guide_id.present?
     search.results
+  end
+
+  # The ids of every section the query finds. From the adapter's relation rather than the results,
+  # which would load every section with its text to read its id; the order goes, since it sorts
+  # by a column the pluck drops. The limit is the most the SQLite adapter pages to and more than
+  # the corpus has sections.
+  def ids(query)
+    Section.search(query, index: index).limit(10_000).to_native_query.reorder(nil).pluck(:section_id).map(&:to_i)
   end
 
   # The tokens FTS5 sees for +text+: a query here is tokenized the same way the indexed text was.
