@@ -30,6 +30,7 @@ Over the 1,505 sections of the 48 guides, for example:
 | `deprecat` | 0 | 0 | 34 | not a word, so only a substring match can find `deprecated` and `deprecation` |
 | `has_many` | 35 | 35 | 29 | unicode61 and porter read it as the phrase `has many`, which prose contains too |
 | `N+1` | 12 | 12 | 5 | the same, with `n` and `1` |
+| `eager loading` | 17 | 25 | 20 | two words are a phrase for all three; porter also takes "eager load", trigram the characters in a row, space included |
 
 Each column also prints the FTS5 tokens of the query (through a temporary FTS5 table and
 `fts5vocab`), which is usually where the explanation is, and every hit links to its section on

@@ -71,7 +71,9 @@ try {
   const verdicts = await page.$$eval(".outcome .verdict", (nodes) => nodes.map((node) => node.textContent.trim()));
   console.log(`Playground verdicts for callba: ${JSON.stringify(verdicts)}`);
   if (verdicts.join() !== "no hit,no hit,a hit") fail(`expected only trigram to match callba, got ${JSON.stringify(verdicts)}`);
-  if ((await page.$$(".comparison-bar")).length !== 15) fail("expected five queries with three bars each");
+  const rows = (await page.$$(".comparison-row")).length;
+  const bars = (await page.$$(".comparison-bar")).length;
+  if (rows === 0 || bars !== rows * 3) fail(`expected three bars per sample query, got ${bars} bars for ${rows} queries`);
 
   console.log(process.exitCode ? "Smoke test failed." : "Smoke test passed.");
 } catch (error) {
