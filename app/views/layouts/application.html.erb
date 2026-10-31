@@ -18,7 +18,7 @@
       <p class="site-tagline">
         The Rails Guides, searched with <a href="https://github.com/basecamp/rails-active_search">Active Search</a>'s SQLite adapter.
         The same sections, three FTS5 tokenizers, side by side.
-        <%= link_to "How the three tokenizers differ", tokenizers_path, class: "site-explainer-link" %>
+        <%= link_to "How the three tokenizers differ", tokenizers_path, class: "site-explainer-link" unless current_page?(tokenizers_path) %>
         <% if on_wasm? %>This Rails app is running inside your browser on ruby.wasm.<% end %>
       </p>
     </header>
