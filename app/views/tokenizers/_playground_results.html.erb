@@ -1,0 +1,33 @@
+<%= turbo_frame_tag "playground-results" do %>
+  <% if playground.filled? %>
+    <p class="playground-fts">
+      FTS5 receives <code><%= playground.fts_query %></code>
+      <% if playground.fts_query != playground.query %>(Active Search quoted it, since it is not one plain word)<% end %>
+    </p>
+    <div class="outcomes">
+      <% playground.outcomes.each do |outcome| %>
+        <section class="outcome strategy-<%= outcome.strategy.key %>" id="outcome-<%= outcome.strategy.key %>">
+          <h3>
+            <span class="strategy-dot" aria-hidden="true"></span><a href="#<%= outcome.strategy.key %>"><%= outcome.strategy.key %></a>
+            <% if outcome.error %>
+              <span class="verdict verdict-error">FTS5 refused the query</span>
+            <% elsif outcome.match? %>
+              <span class="verdict verdict-hit">a hit</span>
+            <% else %>
+              <span class="verdict verdict-miss">no hit</span>
+            <% end %>
+          </h3>
+          <% if outcome.error %>
+            <p class="column-error"><%= outcome.error %></p>
+          <% else %>
+            <p class="outcome-text"><%= playground_highlight(outcome.highlight || playground.text) %></p>
+            <p class="tokens"><span class="tokens-label">Text:</span><%= token_chips outcome.document_tokens %></p>
+            <p class="tokens"><span class="tokens-label">Query:</span><% if outcome.query_tokens.empty? %><em>no token</em><% else %><%= token_chips outcome.query_tokens %><% end %></p>
+          <% end %>
+        </section>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="playground-empty">Fill in both to see the three answers.</p>
+  <% end %>
+<% end %>
