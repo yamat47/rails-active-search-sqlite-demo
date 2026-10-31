@@ -67,11 +67,12 @@ class SearchStrategy
     search.results
   end
 
-  # The ids of every section the query finds. The limit is the most the SQLite adapter pages to
-  # and more than the corpus has sections; a filter field as the hit field, so that no section
-  # text travels for an id.
+  # The ids of every section the query finds. From the adapter's relation rather than the results,
+  # which would load every section with its text to read its id; the order goes, since it sorts
+  # by a column the pluck drops. The limit is the most the SQLite adapter pages to and more than
+  # the corpus has sections.
   def ids(query)
-    Section.search(query, index: index).hit_fields(:guide_id).limit(10_000).results.map(&:id)
+    Section.search(query, index: index).limit(10_000).to_native_query.reorder(nil).pluck(:section_id).map(&:to_i)
   end
 
   # The tokens FTS5 sees for +text+: a query here is tokenized the same way the indexed text was.
