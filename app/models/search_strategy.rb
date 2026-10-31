@@ -55,6 +55,8 @@ class SearchStrategy
 
   class << self
     def all = ALL
+
+    def find(key) = ALL.find { |strategy| strategy.key == key } or raise ArgumentError, "no tokenizer #{key}"
   end
 
   def search(query, guide_id: nil, limit: 10)
@@ -63,6 +65,11 @@ class SearchStrategy
       .limit(limit)
     search = search.filter(guide_id: guide_id) if guide_id.present?
     search.results
+  end
+
+  # The ids of every section the query finds, in rank order, without loading highlights.
+  def ids(query, limit:)
+    Section.search(query, index: index).limit(limit).results.map(&:id)
   end
 
   # The tokens FTS5 sees for +text+: a query here is tokenized the same way the indexed text was.

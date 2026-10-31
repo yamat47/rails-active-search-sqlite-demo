@@ -35,6 +35,13 @@ Each column also prints the FTS5 tokens of the query (through a temporary FTS5 t
 `fts5vocab`), which is usually where the explanation is, and every hit links to its section on
 guides.rubyonrails.org.
 
+[The page at /tokenizers](https://rails-active-search.yamat47.me/tokenizers) explains the
+difference for a reader who knows Rails but not tokenizers: how a search matches tokens rather than
+text, one sentence drawn as each tokenizer cuts it, the hit counts above as bars, and a playground
+that takes any text and query and shows what each tokenizer makes of them and whether FTS5 calls it
+a hit (through a temporary table built with that tokenizer, with the query passed as Active Search
+passes it).
+
 ## How it is built
 
 - `config/search.rb` declares the three indexes over `Section`; `app/models/section.rb` connects them with `has_search index:`, inline rather than through Active Job so a seed run or a test sees the index at once. `SearchStrategy` runs one query against all three.

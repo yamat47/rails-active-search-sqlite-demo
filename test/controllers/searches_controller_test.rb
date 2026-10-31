@@ -24,6 +24,16 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "script[type='importmap']"
   end
 
+  test "the page links to the explanation: the header, the intro, each column and the query's tokens" do
+    get root_path
+    assert_select ".site-header a[href=?]", tokenizers_path
+    assert_select ".intro a[href=?]", tokenizers_path
+
+    get root_path(q: "callba")
+    assert_select "#strategy-porter h2 a[href=?]", tokenizers_path(anchor: "porter")
+    assert_select "#strategy-porter .tokens a[href=?]", tokenizers_path(q: "callba", anchor: "playground")
+  end
+
   test "a query renders one column per strategy with the hits it has" do
     get root_path(q: "callba")
     assert_response :success
