@@ -1,6 +1,6 @@
 class SearchesController < ApplicationController
-  # Each one shows a different gap between the three tokenizers (see the README).
-  SAMPLE_QUERIES = [ "callbacks", "validate", "deprecat", "has_many", "N+1", "eager loading" ].freeze
+  # Each one shows a different gap between the three tokenizers, which the explanation page says.
+  SAMPLE_QUERIES = TokenizerComparison::SAMPLES.map(&:first).freeze
 
   def show
     @query = params[:q].to_s.strip
