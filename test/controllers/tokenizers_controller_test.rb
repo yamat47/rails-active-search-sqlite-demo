@@ -14,9 +14,9 @@ class TokenizersControllerTest < ActionDispatch::IntegrationTest
   test "the page draws one sentence cut three ways, a card and a bar per tokenizer" do
     get tokenizers_path
     assert_response :success
-    assert_select ".cuts-track[data-tokenizer=unicode61] .cuts-piece", text: "has"
-    assert_select ".cuts-track[data-tokenizer=porter] .cuts-piece-reshaped", text: "mani"
-    assert_select ".cuts-track[data-tokenizer=trigram] .cuts-piece", text: "ns␣"
+    assert_select ".cuts-track.strategy-unicode61 .cuts-piece", text: "has"
+    assert_select ".cuts-track.strategy-porter .cuts-piece-reshaped", text: "mani"
+    assert_select ".cuts-track.strategy-trigram .cuts-piece", text: "ns␣"
     assert_select ".strategy#porter .migration code", text: SearchStrategy.find("porter").migration_line
     assert_select ".comparison-row", count: TokenizerComparison::SAMPLES.size
     assert_select ".comparison-row:first-child .comparison-bar.strategy-porter .comparison-count", text: "2"

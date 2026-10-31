@@ -5,12 +5,7 @@
     <pre class="migration"><code><%= column.strategy.migration_line %></code></pre>
     <p class="tokens">
       <span class="tokens-label">Query as FTS5 tokens:</span>
-      <% tokens = column.tokens %>
-      <% if tokens.empty? %>
-        <em>none</em>
-      <% else %>
-        <% tokens.each do |token| %><%= token_chip token %><% end %>
-      <% end %>
+      <%= token_chips column.tokens, empty: "none" %>
       <%= link_to "try it in the playground", tokenizers_path(q: column.query, anchor: "playground"), class: "tokens-playground" %>
     </p>
   </header>

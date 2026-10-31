@@ -3,17 +3,11 @@
     <div class="cuts-label"></div>
     <div class="cuts-sentence" aria-label="<%= cuts.sentence %>"><% cuts.sentence.each_char do |char| %><span class="cuts-char"><%= char %></span><% end %></div>
     <% SearchStrategy.all.each do |strategy| %>
-      <% pieces = cuts.pieces(strategy) %>
       <div class="cuts-label strategy-<%= strategy.key %>"><a href="#<%= strategy.key %>"><%= strategy.key %></a></div>
-      <div class="cuts-track" data-tokenizer="<%= strategy.key %>">
-        <% pieces.each_with_index do |piece, index| %>
-          <%
-            row = strategy.key == "trigram" ? index % 3 + 1 : 1
-            classes = [ "cuts-piece", "strategy-#{strategy.key}" ]
-            classes << "cuts-piece-reshaped" if piece.word && !piece.trimmed?
-          %>
+      <div class="cuts-track strategy-<%= strategy.key %>">
+        <% cuts.pieces(strategy).each do |piece| %>
           <%# No whitespace inside the chip: it is white-space: pre, one character per grid column. %>
-          <span class="<%= classes.join(" ") %>" style="grid-column: <%= piece.start + 1 %> / span <%= piece.length %>; grid-row: <%= row %>" title="<%= piece.word ? "#{piece.word} → #{piece.token}" : piece.token %>"><% if piece.word && piece.trimmed? %><span class="cuts-stem"><%= piece.token %></span><span class="cuts-cut"><%= piece.word[piece.token.length..] %></span><% else %><%= piece.token.tr(" ", "␣") %><% end %></span>
+          <span class="cuts-piece<%= " cuts-piece-reshaped" if piece.word && !piece.trimmed? %>" style="grid-column: <%= piece.start + 1 %> / span <%= piece.length %>; grid-row: <%= piece.lane %>" title="<%= piece.word ? "#{piece.word} → #{piece.token}" : piece.token %>"><% if piece.word && piece.trimmed? %><span class="cuts-stem"><%= piece.token %></span><span class="cuts-cut"><%= piece.word[piece.token.length..] %></span><% else %><%= visible_token piece.token %><% end %></span>
         <% end %>
       </div>
     <% end %>
@@ -21,6 +15,6 @@
   <figcaption>
     <span class="cuts-key"><span class="cuts-stem">valid</span><span class="cuts-cut">ations</span> the stem porter keeps, and the tail it drops</span>
     <span class="cuts-key"><span class="cuts-piece cuts-piece-reshaped strategy-porter cuts-key-chip">mani</span> a stem that is not a shorter word</span>
-    <span class="cuts-key"><code>␣</code> a space inside a trigram</span>
+    <span class="cuts-key"><code><%= visible_token " " %></code> a space inside a trigram</span>
   </figcaption>
 </figure>

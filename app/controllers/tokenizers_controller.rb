@@ -7,7 +7,7 @@ class TokenizersController < ApplicationController
   def show
     @playground = TokenizerPlayground.new(text: params[:text], query: params[:q])
     # The playground re-renders alone as the reader types; the rest of the page costs fifteen searches.
-    return render :playground if turbo_frame_request?
+    return render partial: "playground_results", locals: { playground: @playground } if turbo_frame_request?
 
     @cuts = SentenceCuts.new(SENTENCE)
     @comparisons = TokenizerComparison.samples

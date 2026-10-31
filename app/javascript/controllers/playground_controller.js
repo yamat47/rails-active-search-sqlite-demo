@@ -4,11 +4,10 @@ import { Controller } from "@hotwired/stimulus"
 // The form targets a Turbo Frame, so only the results re-render and the inputs keep focus.
 export default class extends Controller {
   static targets = ["text", "query"]
-  static values = { delay: { type: Number, default: 250 } }
 
   schedule() {
     clearTimeout(this.timer)
-    this.timer = setTimeout(() => this.element.requestSubmit(), this.delayValue)
+    this.timer = setTimeout(() => this.element.requestSubmit(), 250)
   }
 
   preset({ params: { text, query } }) {

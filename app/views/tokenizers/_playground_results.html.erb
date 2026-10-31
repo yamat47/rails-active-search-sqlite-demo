@@ -21,8 +21,8 @@
             <p class="column-error"><%= outcome.error %></p>
           <% else %>
             <p class="outcome-text"><%= playground_highlight(outcome.highlight || playground.text) %></p>
-            <p class="tokens"><span class="tokens-label">Text:</span><%= token_chips outcome.document_tokens %></p>
-            <p class="tokens"><span class="tokens-label">Query:</span><% if outcome.query_tokens.empty? %><em>no token</em><% else %><%= token_chips outcome.query_tokens %><% end %></p>
+            <p class="tokens"><span class="tokens-label">Text:</span><%= token_chips outcome.document_tokens, empty: "no token" %></p>
+            <p class="tokens"><span class="tokens-label">Query:</span><%= token_chips outcome.query_tokens, empty: "no token" %></p>
           <% end %>
         </section>
       <% end %>
