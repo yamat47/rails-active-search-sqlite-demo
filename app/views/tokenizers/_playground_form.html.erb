@@ -1,11 +1,11 @@
 <%= form_with url: tokenizers_path, method: :get, class: "playground-form", id: "playground-form",
       data: { controller: "playground clean-params", action: "input->playground#schedule submit->clean-params#submit",
               turbo_frame: "playground-results", turbo_action: "advance" } do |form| %>
-  <label class="playground-field playground-field-text">
+  <label class="playground-field">
     <span class="playground-label">Text, as if it were a section</span>
     <%= form.text_area :text, value: playground.text, rows: 3, class: "playground-input", placeholder: "Paste a sentence or two", data: { playground_target: "text" } %>
   </label>
-  <label class="playground-field playground-field-query">
+  <label class="playground-field">
     <span class="playground-label">Query</span>
     <%= form.search_field :q, value: playground.query, class: "playground-input", placeholder: "callba", data: { playground_target: "query" } %>
   </label>

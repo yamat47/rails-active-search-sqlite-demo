@@ -23,4 +23,9 @@ class SentenceCutsTest < ActiveSupport::TestCase
     assert_equal [ "val", 0, 3 ], [ pieces[0].token, pieces[0].start, pieces[0].length ]
     assert_equal [ "ns ", 9 ], [ pieces[9].token, pieces[9].start ]
   end
+
+  test "pieces that do not overlap share the first lane, and overlapping ones take the next free lane" do
+    assert_equal [ 1 ], @cuts.pieces(SearchStrategy.find("unicode61")).map(&:lane).uniq
+    assert_equal [ 1, 2, 3, 1, 2, 3 ], @cuts.pieces(SearchStrategy.find("trigram")).first(6).map(&:lane)
+  end
 end

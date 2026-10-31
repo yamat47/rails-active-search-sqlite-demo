@@ -25,7 +25,7 @@ class TokenizerPlaygroundTest < ActiveSupport::TestCase
 
   test "the highlight marks each match and leaves the rest of the text as it was" do
     outcome = TokenizerPlayground.new(text: "A callback runs before the callbacks.", query: "callback").outcomes.first
-    assert_equal "A \u0001callback\u0002 runs before the callbacks.", outcome.highlight
+    assert_equal "A \uE000callback\uE001 runs before the callbacks.", outcome.highlight
   end
 
   test "a query FTS5 cannot use answers no hit on every tokenizer rather than raising" do

@@ -43,8 +43,8 @@ class TokenizerPlayground
     # FTS5 refuses some queries that sanitizing cannot help with, the way the search page's
     # columns do; the other two tokenizers still answer.
     def outcome(strategy)
-      Outcome.new(strategy, strategy.tokens(text), strategy.tokens(query),
-        Fts5Tokenizer.highlight(text, fts_query, tokenize: strategy.tokenize), nil)
+      document_tokens, highlight = Fts5Tokenizer.tokens_and_highlight(text, fts_query, tokenize: strategy.tokenize)
+      Outcome.new(strategy, document_tokens, strategy.tokens(query), highlight, nil)
     rescue ActiveRecord::StatementInvalid => e
       Outcome.new(strategy, [], [], nil, e.message)
     end

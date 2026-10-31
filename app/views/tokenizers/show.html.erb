@@ -147,7 +147,8 @@
       unicode61 and porter find words by looking for the spaces and punctuation between them. A Japanese sentence
       has neither, so the whole sentence becomes one token, and a query matches only the whole sentence. trigram
       does not look for words, so it works on such text as it does on English:
-      <%= link_to "try a Japanese sentence in the playground", tokenizers_path(text: "コールバックはレコードの保存の前後に呼ばれます。", q: "保存", anchor: "playground") %>.
+      <% japanese = TokenizerPlayground::PRESETS.last %>
+      <%= link_to "try a Japanese sentence in the playground", tokenizers_path(text: japanese[:text], q: japanese[:query], anchor: "playground") %>.
       The guides are English, so the search page cannot show this, but the playground can.
     </p>
   </section>

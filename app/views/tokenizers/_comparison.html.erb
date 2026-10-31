@@ -1,11 +1,11 @@
 <div class="comparison">
   <% comparisons.each do |comparison| %>
     <div class="comparison-row">
-      <p class="comparison-query"><%= link_to comparison.query, root_path(q: comparison.query), class: "comparison-link" %></p>
+      <p class="comparison-query"><%= link_to comparison.query, root_path(q: comparison.query) %></p>
       <div class="comparison-bars">
+        <% scale = comparison.max.zero? ? 0 : 100.0 / comparison.max %>
         <% SearchStrategy.all.each do |strategy| %>
           <% count = comparison.count(strategy) %>
-          <% scale = comparison.max.zero? ? 0 : 100.0 / comparison.max %>
           <%= link_to root_path(q: comparison.query, anchor: "strategy-#{strategy.key}"), class: "comparison-bar strategy-#{strategy.key}", title: "#{strategy.key}: #{pluralize(count, 'hit')}, #{comparison.shared} found by all three" do %>
             <span class="comparison-name"><%= strategy.key %></span>
             <span class="comparison-track">
