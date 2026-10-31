@@ -20,6 +20,7 @@ class TokenizersControllerTest < ActionDispatch::IntegrationTest
     assert_select ".strategy#porter .migration code", text: SearchStrategy.find("porter").migration_line
     assert_select ".comparison-row", count: TokenizerComparison::SAMPLES.size
     assert_select ".comparison-row:first-child .comparison-bar.strategy-porter .comparison-count", text: "2"
+    assert_select ".comparison-row .comparison-bar.strategy-unicode61", count: SearchesController::SAMPLE_QUERIES.size
     assert_select ".comparison-row:first-child .comparison-bar.strategy-unicode61 .comparison-count", text: "1"
   end
 
