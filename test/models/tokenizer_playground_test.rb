@@ -16,6 +16,13 @@ class TokenizerPlaygroundTest < ActiveSupport::TestCase
     assert_equal({ "unicode61" => true, "porter" => true, "trigram" => true }, by_key.call("saved"))
   end
 
+  test "a sentence without spaces is one token for unicode61 and porter, and only trigram finds a word in it" do
+    preset = TokenizerPlayground::WITHOUT_SPACES
+    outcomes = TokenizerPlayground.new(text: preset[:text], query: preset[:query]).outcomes
+    assert_equal({ "unicode61" => false, "porter" => false, "trigram" => true }, outcomes.to_h { |o| [ o.strategy.key, o.match? ] })
+    assert_equal [ preset[:text].delete("。") ], outcomes.first.document_tokens
+  end
+
   test "a query of two characters makes no trigram and matches nothing" do
     outcome = TokenizerPlayground.new(text: "callbacks", query: "ca").outcomes.last
     assert_equal "trigram", outcome.strategy.key
