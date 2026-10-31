@@ -56,7 +56,7 @@ class SearchStrategy
   class << self
     def all = ALL
 
-    def find(key) = ALL.find { |strategy| strategy.key == key } or raise ArgumentError, "no tokenizer #{key}"
+    def find(key) = ALL.find { |strategy| strategy.key == key } || raise(ArgumentError, "no tokenizer #{key}")
   end
 
   def search(query, guide_id: nil, limit: 10)
