@@ -1,0 +1,22 @@
+<div class="comparison">
+  <% comparisons.each do |comparison| %>
+    <div class="comparison-row">
+      <p class="comparison-query"><%= link_to comparison.query, root_path(q: comparison.query) %></p>
+      <div class="comparison-bars">
+        <% scale = comparison.max.zero? ? 0 : 100.0 / comparison.max %>
+        <% SearchStrategy.all.each do |strategy| %>
+          <% count = comparison.count(strategy) %>
+          <%= link_to root_path(q: comparison.query, anchor: "strategy-#{strategy.key}"), class: "comparison-bar strategy-#{strategy.key}", title: "#{strategy.key}: #{pluralize(count, 'hit')}, #{comparison.shared} found by all three" do %>
+            <span class="comparison-name"><%= strategy.key %></span>
+            <span class="comparison-track">
+              <span class="comparison-fill comparison-shared" style="width: <%= number_with_precision(comparison.shared * scale, precision: 2) %>%"></span>
+              <span class="comparison-fill comparison-extra" style="width: <%= number_with_precision((count - comparison.shared) * scale, precision: 2) %>%"></span>
+            </span>
+            <span class="comparison-count"><%= number_with_delimiter count %></span>
+          <% end %>
+        <% end %>
+      </div>
+      <p class="comparison-why"><%= comparison.why %></p>
+    </div>
+  <% end %>
+</div>

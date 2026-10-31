@@ -1,0 +1,40 @@
+<div class="strategies">
+  <% unicode61 = SearchStrategy.find("unicode61") %>
+  <article class="strategy strategy-unicode61" id="unicode61">
+    <h3><span class="strategy-dot" aria-hidden="true"></span>unicode61 <small>the default</small></h3>
+    <pre class="migration"><code><%= unicode61.migration_line %></code></pre>
+    <dl class="strategy-facts">
+      <dt>Cuts</dt><dd>at every space and punctuation mark, underscore included; lowercases; strips accents</dd>
+      <dt>Finds</dt><dd>the word exactly as written: <code>callbacks</code> finds "callbacks" and "Callbacks"</dd>
+      <dt>Misses</dt><dd>every other spelling: "callback", "callba", "callbacks'"; case does not matter, letters do</dd>
+      <dt>Best for</dt><dd>exact terms, and as the baseline the other two are measured against</dd>
+    </dl>
+    <p class="strategy-try">Try <%= link_to "callbacks", root_path(q: "callbacks") %>, then <%= link_to "callback", root_path(q: "callback") %>.</p>
+  </article>
+
+  <% porter = SearchStrategy.find("porter") %>
+  <article class="strategy strategy-porter" id="porter">
+    <h3><span class="strategy-dot" aria-hidden="true"></span>porter <small>stemming</small></h3>
+    <pre class="migration"><code><%= porter.migration_line %></code></pre>
+    <dl class="strategy-facts">
+      <dt>Cuts</dt><dd>like unicode61, then trims each word to its stem with the Porter algorithm for English</dd>
+      <dt>Finds</dt><dd>every form of a word: <code>validate</code> is <code>valid</code>, and so are "validation", "validations" and "valid"</dd>
+      <dt>Misses</dt><dd>nothing unicode61 finds, but adds words that only share a stem ("general" and "generate"); knows no language but English</dd>
+      <dt>Best for</dt><dd>English prose, which is what the Active Search README suggests it for</dd>
+    </dl>
+    <p class="strategy-try">Try <%= link_to "validate", root_path(q: "validate") %> and compare the counts.</p>
+  </article>
+
+  <% trigram = SearchStrategy.find("trigram") %>
+  <article class="strategy strategy-trigram" id="trigram">
+    <h3><span class="strategy-dot" aria-hidden="true"></span>trigram <small>substrings</small></h3>
+    <pre class="migration"><code><%= trigram.migration_line %></code></pre>
+    <dl class="strategy-facts">
+      <dt>Cuts</dt><dd>every three consecutive characters, overlapping, spaces and punctuation kept; lowercases</dd>
+      <dt>Finds</dt><dd>the query's characters wherever they are: <code>deprecat</code> finds "deprecated" and "deprecation", <code>find_b</code> finds <code>find_by</code></dd>
+      <dt>Misses</dt><dd>queries under three characters, which make no token at all; and the other forms of a word, unless they share the letters</dd>
+      <dt>Best for</dt><dd>search-as-you-type, identifiers and code, and text that has no spaces between words</dd>
+    </dl>
+    <p class="strategy-try">Try <%= link_to "deprecat", root_path(q: "deprecat") %>, which only this column answers, and <%= link_to "ca", root_path(q: "ca") %>, which it cannot.</p>
+  </article>
+</div>

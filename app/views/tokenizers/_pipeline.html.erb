@@ -1,0 +1,36 @@
+<figure class="pipeline">
+  <div class="pipeline-row">
+    <span class="pipeline-when">Indexing a section</span>
+    <div class="pipeline-box pipeline-text">…you need to register <b>callbacks</b> for…</div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-tokenizer">tokenizer</div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-tokens"><span class="token">you</span><span class="token">need</span><span class="token">to</span><span class="token">register</span><span class="token token-hit">callbacks</span><span class="token">for</span></div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-store">index</div>
+  </div>
+  <div class="pipeline-row">
+    <span class="pipeline-when">Searching</span>
+    <div class="pipeline-box pipeline-text">callbacks</div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-tokenizer">tokenizer</div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-tokens"><span class="token token-hit">callbacks</span></div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-store pipeline-hit">hit<small>the token is in the index</small></div>
+  </div>
+  <div class="pipeline-row">
+    <span class="pipeline-when">Searching</span>
+    <div class="pipeline-box pipeline-text">callback</div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-tokenizer">tokenizer</div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-tokens"><span class="token token-miss">callback</span></div>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <div class="pipeline-box pipeline-store pipeline-miss">no hit<small>no such token in the index</small></div>
+  </div>
+  <figcaption>
+    The same tokenizer runs on both sides. With the default one, <code>callback</code> and <code>callbacks</code>
+    are different tokens, so one does not find the other.
+  </figcaption>
+</figure>

@@ -1,16 +1,12 @@
-<section class="column" id="strategy-<%= column.strategy.key %>">
+<section class="column strategy-<%= column.strategy.key %>" id="strategy-<%= column.strategy.key %>">
   <header class="column-header">
-    <h2><%= column.strategy.title %></h2>
+    <h2><span class="strategy-dot" aria-hidden="true"></span><%= link_to column.strategy.title, tokenizers_path(anchor: column.strategy.key), class: "column-title", title: "How the #{column.strategy.key} tokenizer works" %></h2>
     <p class="column-summary"><%= column.strategy.summary %></p>
     <pre class="migration"><code><%= column.strategy.migration_line %></code></pre>
     <p class="tokens">
       <span class="tokens-label">Query as FTS5 tokens:</span>
-      <% tokens = column.tokens %>
-      <% if tokens.empty? %>
-        <em>none</em>
-      <% else %>
-        <% tokens.each do |token| %><span class="token"><%= token %></span><% end %>
-      <% end %>
+      <%= token_chips column.tokens, empty: "none" %>
+      <%= link_to "try it in the playground", tokenizers_path(q: column.query, anchor: "playground"), class: "tokens-playground" %>
     </p>
   </header>
 

@@ -65,6 +65,16 @@ try {
   console.log(`URL after submitting the form: ${search}`);
   if (search !== "?q=validate") fail(`expected ?q=validate, got ${search}`);
 
+  // The explanation page, with its playground filled from the URL, through the same worker.
+  await page.goto(`${origin}/tokenizers?text=you+need+to+register+callbacks&q=callba`);
+  await page.waitForSelector("#outcome-trigram .verdict-hit", { timeout: 60_000 });
+  const verdicts = await page.$$eval(".outcome .verdict", (nodes) => nodes.map((node) => node.textContent.trim()));
+  console.log(`Playground verdicts for callba: ${JSON.stringify(verdicts)}`);
+  if (verdicts.join() !== "no hit,no hit,a hit") fail(`expected only trigram to match callba, got ${JSON.stringify(verdicts)}`);
+  const rows = (await page.$$(".comparison-row")).length;
+  const bars = (await page.$$(".comparison-bar")).length;
+  if (rows === 0 || bars !== rows * 3) fail(`expected three bars per sample query, got ${bars} bars for ${rows} queries`);
+
   console.log(process.exitCode ? "Smoke test failed." : "Smoke test passed.");
 } catch (error) {
   fail(error.stack || String(error));

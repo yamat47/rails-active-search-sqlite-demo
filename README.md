@@ -30,10 +30,18 @@ Over the 1,505 sections of the 48 guides, for example:
 | `deprecat` | 0 | 0 | 34 | not a word, so only a substring match can find `deprecated` and `deprecation` |
 | `has_many` | 35 | 35 | 29 | unicode61 and porter read it as the phrase `has many`, which prose contains too |
 | `N+1` | 12 | 12 | 5 | the same, with `n` and `1` |
+| `eager loading` | 17 | 25 | 20 | two words are a phrase for all three; porter also takes "eager load", trigram the characters in a row, space included |
 
 Each column also prints the FTS5 tokens of the query (through a temporary FTS5 table and
 `fts5vocab`), which is usually where the explanation is, and every hit links to its section on
 guides.rubyonrails.org.
+
+[The page at /tokenizers](https://rails-active-search.yamat47.me/tokenizers) explains the
+difference for a reader who knows Rails but not tokenizers: how a search matches tokens rather than
+text, one sentence drawn as each tokenizer cuts it, the hit counts above as bars, and a playground
+that takes any text and query and shows what each tokenizer makes of them and whether FTS5 calls it
+a hit (through a temporary table built with that tokenizer, with the query passed as Active Search
+passes it).
 
 ## How it is built
 
