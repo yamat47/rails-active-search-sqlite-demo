@@ -1,7 +1,7 @@
 <figure class="cuts-figure">
   <div class="cuts" style="--cols: <%= cuts.sentence.length %>">
     <div class="cuts-label"></div>
-    <div class="cuts-sentence" aria-label="<%= cuts.sentence %>"><% cuts.sentence.each_char do |char| %><span class="cuts-char"><%= char %></span><% end %></div>
+    <div class="cuts-sentence" role="img" aria-label="<%= cuts.sentence %>"><% cuts.sentence.each_char do |char| %><span class="cuts-char"><%= char %></span><% end %></div>
     <% SearchStrategy.all.each do |strategy| %>
       <div class="cuts-label strategy-<%= strategy.key %>"><a href="#<%= strategy.key %>"><%= strategy.key %></a></div>
       <div class="cuts-track strategy-<%= strategy.key %>">
